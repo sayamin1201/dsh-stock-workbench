@@ -1,0 +1,4 @@
+# dsh bundle patch: inserts the stock workbench into the profile's layer stack.
+- insert:
+    - id: dsh-stock-workbench
+      name: '@local/dsh-stock-workbench'

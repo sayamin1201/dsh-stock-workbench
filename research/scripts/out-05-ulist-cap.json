@@ -1,0 +1,56 @@
+[
+  {
+    "k": "ulist n=1000 few",
+    "status": 502,
+    "ms": 177,
+    "kb": 0.6,
+    "err": null,
+    "head": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</"
+  },
+  {
+    "k": "ulist n=1500 few",
+    "status": 502,
+    "ms": 188,
+    "kb": 0.6,
+    "err": null,
+    "head": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</"
+  },
+  {
+    "k": "ulist n=2000 few",
+    "status": 502,
+    "ms": 86,
+    "kb": 0.6,
+    "err": null,
+    "head": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</"
+  },
+  {
+    "k": "ulist n=3000 few",
+    "status": 502,
+    "ms": 23,
+    "kb": 0.6,
+    "err": null,
+    "head": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</"
+  },
+  {
+    "k": "ulist n=800 full19",
+    "status": 200,
+    "ms": 65,
+    "kb": 163.3,
+    "total": 712,
+    "err": null,
+    "head": "{\"rc\":0,\"rt\":11,\"svr\":180606395,\"lt\":1,\"full\":1,\"dlmkts\":\"\",\"dsc\":\"0\",\"data\":{\"total\":712,"
+  },
+  {
+    "k": "ulist n=1500 full19",
+    "status": 502,
+    "ms": 22,
+    "kb": 0.6,
+    "err": null,
+    "head": "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</"
+  },
+  {
+    "k": "clist pn=61 raw",
+    "status": 200,
+    "body": "{\"rc\":102,\"rt\":1,\"svr\":180606385,\"lt\":1,\"full\":1,\"dlmkts\":\"\",\"dsc\":\"0\",\"data\":null}"
+  }
+]

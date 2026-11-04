@@ -1,0 +1,137 @@
+[
+  {
+    "k": "pz=100",
+    "status": 200,
+    "ms": 161,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100
+  },
+  {
+    "k": "pz=101",
+    "status": 200,
+    "ms": 28,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100
+  },
+  {
+    "k": "pz=150",
+    "status": 200,
+    "ms": 20,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100
+  },
+  {
+    "k": "pz=500",
+    "status": 200,
+    "ms": 20,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100
+  },
+  {
+    "k": "pz=1000",
+    "status": 200,
+    "ms": 82,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100
+  },
+  {
+    "k": "pz=6000",
+    "status": 200,
+    "ms": 20,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100
+  },
+  {
+    "k": "pn=59 pz=100",
+    "status": 200,
+    "ms": 14,
+    "kb": 4.5,
+    "total": 5927,
+    "returned": 100,
+    "dataNull": false
+  },
+  {
+    "k": "pn=60 pz=100",
+    "status": 200,
+    "ms": 16,
+    "kb": 1.3,
+    "total": 5927,
+    "returned": 27,
+    "dataNull": false
+  },
+  {
+    "k": "pn=61 pz=100",
+    "status": 200,
+    "ms": 20,
+    "kb": 0.1,
+    "returned": 0,
+    "dataNull": true
+  },
+  {
+    "k": "page1 codes sample",
+    "n": 100,
+    "first5": [
+      {
+        "f12": "920992",
+        "f13": 0,
+        "f14": "中科美菱"
+      },
+      {
+        "f12": "920985",
+        "f13": 0,
+        "f14": "海泰新能"
+      },
+      {
+        "f12": "920982",
+        "f13": 0,
+        "f14": "锦波生物"
+      },
+      {
+        "f12": "920981",
+        "f13": 0,
+        "f14": "晶赛科技"
+      },
+      {
+        "f12": "920978",
+        "f13": 0,
+        "f14": "开特股份"
+      }
+    ]
+  },
+  {
+    "k": "ulist n=200",
+    "status": 200,
+    "ms": 21,
+    "kb": 10,
+    "returned": 177,
+    "total": 177,
+    "err": null,
+    "head": "{\"rc\":0,\"rt\":11,\"svr\":180606396,\"lt\":1,\"full\":1,\"dlmkts\":\"\",\"dsc\":\"0\",\"data\":{\"total\":177,\"diff\":[{\""
+  },
+  {
+    "k": "ulist n=400",
+    "status": 200,
+    "ms": 24,
+    "kb": 20,
+    "returned": 355,
+    "total": 355,
+    "err": null,
+    "head": "{\"rc\":0,\"rt\":11,\"svr\":181669460,\"lt\":1,\"full\":1,\"dlmkts\":\"\",\"dsc\":\"0\",\"data\":{\"total\":355,\"diff\":[{\""
+  },
+  {
+    "k": "ulist n=800",
+    "status": 200,
+    "ms": 39,
+    "kb": 40,
+    "returned": 712,
+    "total": 712,
+    "err": null,
+    "head": "{\"rc\":0,\"rt\":11,\"svr\":180606318,\"lt\":1,\"full\":1,\"dlmkts\":\"\",\"dsc\":\"0\",\"data\":{\"total\":712,\"diff\":[{\""
+  }
+]
