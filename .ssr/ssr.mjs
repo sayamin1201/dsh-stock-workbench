@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 
 const requireFromSsr = createRequire(new URL('./package.json', import.meta.url));
 const CLIENT = 'D:/h5/stock-workbench/dsh-stock-workbench/client.js';
-const BASE = 'http://127.0.0.1:54251/';
+const BASE = (process.env.DSH_BASE ?? 'http://127.0.0.1:54251/').replace(/\/?$/, '/');
 
 const React = requireFromSsr('react');
 const { renderToStaticMarkup } = requireFromSsr('react-dom/server');
@@ -46,6 +46,13 @@ globalThis.window = { addEventListener() {}, removeEventListener() {} };
 const factoryFn = new Function('require', 'window', 'document', 'fetch', source);
 factoryFn(requireFromSsr, fakeWindow, fakeDocument, globalThis.fetch);
 if (!captured) throw new Error('模块没有调用 __ModuleLoader__.load');
+// 回归：Client 模块注册 ID 必须等于包名（DSH client-modules 按包名索引，带前缀会静默不生效）
+{
+  const pkg = JSON.parse(readFileSync(new URL('../dsh-stock-workbench/package.json', import.meta.url), 'utf8'));
+  assert(captured.id === pkg.name,
+    'Client 注册 ID 必须等于包名：captured.id=' + captured.id + '，package.name=' + pkg.name);
+  assert(!captured.id.includes('@local/'), 'Client 注册 ID 不能带 @local/ 前缀：' + captured.id);
+}
 console.log('✓ 模块格式可加载  id=' + captured.id);
 
 const mod = captured.factory(requireFromSsr);

@@ -7,7 +7,7 @@
  * to a quote provider directly.
  */
 window.__ModuleLoader__.load({
-  id: '@local/dsh-stock-workbench',
+  id: 'dsh-stock-workbench',
   factory: (require) => {
     const React = require('react');
     const h = React.createElement;

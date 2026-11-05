@@ -963,7 +963,7 @@ window.__ModuleLoader__.load({
 | 左栏入口 | `sidebar.panellist`, `id: PANEL_ID`, `order: 30`, `label: () => t('nav')`, `locale: NS` | 同（`order: 20` 只是排序位） | ✅ 一致 |
 | 整页 | `main`, `key: PANEL_ID`, `locale: NS` | 同 | ✅ 一致 |
 | id 配对 | 两处同一个 `PANEL_ID` | 同 | ✅ 一致 |
-| 模块 id | `window.__ModuleLoader__.load({ id: '@local/dsh-stock-workbench' })` = `package.json.name` | 要求 id === name | ✅ 一致 |
+| 模块 id | `window.__ModuleLoader__.load({ id: 'dsh-stock-workbench' })` = `package.json.name` | 要求 id === name | ✅ 一致 |
 | 图标 props | `(owner = {}) => h(WorkbenchIcon, { size: owner.size ?? 16 })` | `{ size, active }` | ✅ 一致 |
 | 数据 | 注释明写"All data comes from the Host half's same-origin JSON routes; the renderer never talks to a quote provider directly" | 同结论 | ✅ 一致 |
 | `inject` | `['slots','locale']` | 同 | ✅ 一致 |
