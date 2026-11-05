@@ -4364,27 +4364,30 @@ window.__ModuleLoader__.load({
     function DetailPage({ row, t, onBack, watched, onToggleWatch = () => {} }) {
       const [detailOpen, setDetailOpen] = React.useState(false);
       const [valuation, setValuation] = React.useState({ status: 'idle', data: null, error: '' });
+      // 请求序号：effect 不能再依赖自身 status（否则 setValuation('loading') 触发重跑，
+      // cleanup 会作废本轮请求，结果被丢弃 → 永远停在"计算中"）
+      const valuationReq = React.useRef(0);
 
       React.useEffect(() => {
-        if (!detailOpen || valuation.status === 'ready' || valuation.status === 'loading') return undefined;
-        let alive = true;
+        if (!detailOpen) return undefined;
+        const req = valuationReq.current + 1;
+        valuationReq.current = req;
         setValuation({ status: 'loading', data: null, error: '' });
         fetch(apiUrl(`dsh-stock/api/v1/valuation?code=${encodeURIComponent(row.code)}`), {
           headers: { accept: 'application/json' },
         })
           .then((response) => response.json().then((body) => ({ body, status: response.status })))
           .then(({ body, status }) => {
-            if (!alive) return;
+            if (valuationReq.current !== req) return;
             if (!body || body.ok !== true) throw new Error((body && body.error) || `HTTP ${status}`);
             setValuation({ status: 'ready', data: body.data, error: '' });
           })
           .catch((error) => {
-            if (alive) setValuation({ status: 'error', data: null, error: error.message });
+            if (valuationReq.current !== req) return;
+            setValuation({ status: 'error', data: null, error: error.message });
           });
-        return () => {
-          alive = false;
-        };
-      }, [detailOpen, row.code, valuation.status]);
+        return undefined;
+      }, [detailOpen, row.code]);
       const [period, setPeriod] = React.useState('101');
       const [indicator, setIndicator] = React.useState('macd');
       const [view, setView] = React.useState(null);

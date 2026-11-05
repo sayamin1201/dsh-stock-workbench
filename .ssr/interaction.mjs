@@ -103,12 +103,20 @@ globalThis.fetch = async (url) => {
       }),
     };
   }
+  if (href.includes('valuation')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ ok: true, data: { code: '600036', name: '招商银行', pe: 7.02, pb: 0.91, pePercentile: 65, pbPercentile: 31.9, sampleDays: 1210, years: 5 } }),
+    };
+  }
   const json = href.includes('dividend') ? fakeDividend() : fakeDashboard();
   return { ok: true, status: 200, statusText: 'OK', json: async () => json };
 };
 
 let captured = null;
-const fakeWindow = { __ModuleLoader__: { load: (mod) => { captured = mod; } } };
+const fakeWindow = { __ModuleLoader__: { load: (mod) => { captured = mod; } }, addEventListener() {}, removeEventListener() {} };
 const source = readFileSync(CLIENT, 'utf8');
 const factoryFn = new Function('require', 'window', 'document', 'fetch', source);
 factoryFn(requireFromSsr, fakeWindow, globalThis.document, globalThis.fetch);
@@ -503,6 +511,36 @@ check('点板块后回到榜单并只显示成分股', () => {
   assert(rows.length === 2, '应只剩 2 只成分股，实际 ' + rows.length);
   const markup = JSON.stringify(tree.toJSON() ?? '');
   assert(markup.includes('板块筛选'), '缺少板块筛选 chip');
+});
+
+// --- 个股详情 popover：估值分位必须能落地（回归：effect 依赖自身 status → 永久"计算中"）
+const detailRow = {
+  code: '600036', name: '招商银行', board: 'sh-main', price: 42.5, pct: 0.2, amount: 3e9,
+  turnover: 0.4, volumeRatio: 1, amplitude: 1.7, speed: 0, floatMcap: 8e11, mainIn: -1e8, mainInPct: -5,
+  dividendYield: 4.7, dividendYears: 3, dividendConsecutive: 10, roe: 10, debtRatio: 90, grossMargin: 0,
+  revenueYoy: 5, profitYoy: 2, eps: 4.6, bvps: 46, ps: 3, industry: '银行Ⅱ', regionBoard: '广东板块', concepts: '深圳特区',
+};
+let detailTree = null;
+await act(async () => {
+  detailTree = TestRenderer.create(h(mod.__internals.DetailPage, {
+    row: detailRow, t: (k) => k, onBack: () => {}, watched: false,
+  }));
+});
+const detailButton = detailTree.root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function' && node.props.title === 'detailHint')[0];
+check('详情页有「详情」按钮', () => assert(detailButton, '找不到详情按钮'));
+await act(async () => {
+  detailButton.props.onClick({ stopPropagation() {} });
+});
+await act(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 80));
+});
+check('点开后估值分位已落地（不再永久「计算中」）', () => {
+  const markup = JSON.stringify(detailTree.toJSON() ?? '');
+  assert(markup.includes('detailTitle'), '弹窗没出现');
+  assert(!markup.includes('detailValuationLoading'), '仍停在「正在计算估值分位」');
+  assert(markup.includes('65.0'), '未显示 PE 分位 65.0');
+  assert(markup.includes('31.9'), '未显示 PB 分位 31.9');
 });
 
 console.log('\n交互测试通过，共 ' + passed + ' 项');
