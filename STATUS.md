@@ -29,13 +29,13 @@ test/                query 25 / signals 15 / formula 34 / host 端到端（含�
 
 ## Host 路由（9 条）
 
-`GET /dsh-stock/api/v1/` → `health`、`dashboard[?force=1]`、`kline?secid&klt&lmt`、`trends?secid`、`signals`、`scan?signals&minAmount&limit&within&klt`、`formula/fields`、`formula/validate?expr`、`formula?expr&limit`、`dividend?code`、`boards?type`、`board-members?code`、`valuation?code`（**13 条**）
+`GET /dsh-stock/api/v1/` → `health`、`dashboard[?force=1]`、`kline?secid&klt&lmt`、`trends?secid`、`signals`、`scan?signals&minAmount&limit&within&klt`、`formula/fields`、`formula/validate?expr`、`formula?expr&limit`、`dividend?code`、`boards?type`、`board-members?code`、`valuation?code`、`valuation-percentiles`（**14 条**）
 
 ## 能力清单
 
 | tab | 能力 |
 |---|---|
-| 全 A 榜单 | 5572 行（虚拟滚动）、**22 数据列**（含地域板块/所属概念/股息率/分红年数/连续分红/PB/PE/ROE/负债率/毛利率）、可排序、11 项筛选、6 个快捷预设、**多分组自选**（分组条在表格工具行左侧，星标写入当前组）、只看自选、自动刷新（手动/3/5/10s）、导出 CSV；点「分红年数/连续分红」开分红明细弹窗；详情页右上角「ⓘ 详情」popover 展示全部指标 + 估值分位；表格上方工具行最右侧「⚙」按 tab 独立配置列（显示/隐藏、固定到左、拖拽排序），localStorage 按 tab 持久化 |
+| 全 A 榜单 | 5572 行（虚拟滚动）、**22 数据列**（含地域板块/所属概念/股息率/分红年数/连续分红/PB/PE/ROE/负债率/毛利率）、可排序、11 项筛选、6 个快捷预设、**多分组自选**（分组条在表格工具行左侧，星标写入当前组）+ **批量导入**（搜索/文本粘贴）、只看自选、自动刷新（手动/3/5/10s）、导出 CSV；点「分红年数/连续分红」开分红明细弹窗；详情页右上角「ⓘ 详情」popover 展示全部指标 + 估值分位；表格上方工具行最右侧「⚙」按 tab 独立配置列（显示/隐藏、固定到左、拖拽排序），localStorage 按 tab 持久化 |
 | 个股详情（双击行） | 日/周/60/30/15/5 分 K（前复权）+ 当日分时；MA5/10/20；成交量；指标副图 MACD/KDJ/RSI/BIAS；滚轮缩放/拖动平移/双击复位/底部 dataZoom 滑条；向左拖到边界自动补历史（+240/次，日线≤2400、分钟≤1440）；Esc 返回且**不丢筛选与滚动位置**（工作台/详情叠放层） |
 | 信号扫描 | 6 信号（均线金叉/MACD 金叉/20 日新高/放量上攻/多头排列/站上 60 日线）× 4 周期（日线/60/15/5 分）× 窗口（今日/近 3 日/近 5 日）；3 个预设组合；两段式：快照粗筛候选池 → 只对候选池拉日 K |
 | 资金流榜 | 主力净流入/流出 TOP 30 并排 + 净占比 + 合计与家数 |
@@ -67,6 +67,7 @@ cd D:\h5\stock-workbench\.ssr
 ## 已移除（避免重复开发）
 
 - **AI 侧栏**（2026-11-04 应用户要求整体删除）：聊天抽屉、`/chat` SSE、`/models` 模型列表与切换、`/page-context` 页面上下文上报与落盘、`lib/chat.js`、`test/chat.test.mjs`、`state/`、Markdown 渲染、回答里的股票快捷操作、聊天历史 localStorage
+- **截图识别（tesseract.js OCR）**（2026-11-06 按反馈移除）：识别率不理想，代码/资源/测试全删；文本粘贴导入保留
 - **「红利防御」独立 tab**（同日移除，能力已并入）：指标并入全 A 榜单列，5 条策略并入公式收藏夹预置；不再有独立面板与专用筛选器
 - 若以后要恢复 AI：协议细节在 `research/dsh-llm-api.md`（`GenerateOptions = {provider, model, sessionId, system, messages[content 块数组]}`；chunk 文本在 `text-delta`；失败在 `finish.reason.kind==='error'`）
 

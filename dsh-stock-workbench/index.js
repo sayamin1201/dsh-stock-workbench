@@ -14,6 +14,7 @@ import { scanBars, normalizeSignals, SIGNALS } from './lib/signals.js';
 import { compileFormula, getFieldCatalog, getFormulaPresets, FORMULA_EXAMPLES } from './lib/formula.js';
 import { createBoardSource, createBoardMemberSource } from './lib/boards.js';
 import { createValuationSource } from './lib/valuation.js';
+import { createBulkValuationSource } from './lib/valuation-bulk.js';
 
 export const name = 'dsh-stock-workbench';
 
@@ -476,6 +477,27 @@ export function apply(ctx, config = {}) {
             if (!/^BK\d{4}$/.test(code)) return sendJson(response, 400, { ok: false, error: 'code 需为 BKxxxx' });
             try {
               const data = await boardMemberSource.get(code);
+              sendJson(response, 200, { ok: true, data });
+            } catch (error) {
+              sendJson(response, 502, { ok: false, error: error instanceof Error ? error.message : String(error) });
+            }
+          },
+        }),
+      );
+
+      // 全市场估值分位（批量、抽样；用于榜单「PE/PB 分位」列）
+      const bulkValuationSource = createBulkValuationSource();
+      disposers.push(
+        hostCtx.webServer.register({
+          kind: 'exact',
+          path: `${API_BASE}/valuation-percentiles`,
+          handler: async (request, response) => {
+            if (request.method !== 'GET') return methodNotAllowed(response, 'GET');
+            if (process.env.DSH_STOCK_BULK_VALUATION === 'off') {
+              return sendJson(response, 200, { ok: true, data: { status: 'disabled' } });
+            }
+            try {
+              const data = await bulkValuationSource.get();
               sendJson(response, 200, { ok: true, data });
             } catch (error) {
               sendJson(response, 502, { ok: false, error: error instanceof Error ? error.message : String(error) });

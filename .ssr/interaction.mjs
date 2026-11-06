@@ -103,6 +103,25 @@ globalThis.fetch = async (url) => {
       }),
     };
   }
+  if (href.includes('valuation-percentiles')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        ok: true,
+        data: {
+          status: 'ready',
+          map: {
+            '000001': { pe: 5.2, pb: 0.5, pePercentile: 12.3, pbPercentile: 80, samples: 60 },
+            '600036': { pe: 7.0, pb: 0.9, pePercentile: 68.3, pbPercentile: 36.7, samples: 60 },
+            '600519': { pe: 22, pb: 6.7, pePercentile: 35, pbPercentile: 11.7, samples: 60 },
+            '301697': { pe: 88, pb: 9.2, pePercentile: 91.2, pbPercentile: 95, samples: 60 },
+          },
+        },
+      }),
+    };
+  }
   if (href.includes('valuation')) {
     return {
       ok: true,
@@ -541,6 +560,82 @@ check('点开后估值分位已落地（不再永久「计算中」）', () => {
   assert(!markup.includes('detailValuationLoading'), '仍停在「正在计算估值分位」');
   assert(markup.includes('65.0'), '未显示 PE 分位 65.0');
   assert(markup.includes('31.9'), '未显示 PB 分位 31.9');
+});
+
+// --- 榜单：估值分位列（PE/PB 分位）合并与可排序
+check('榜单包含 PE/PB 分位列且已合并数据', () => {
+  const heads = tree.root.findAll((node) => typeof node.type === 'string'
+    && String(node.props.className ?? '').split(' ').includes('sw-th'))
+    .map((node) => textOf(node)).join('|');
+  assert(heads.includes('PE分位'), '缺 PE 分位列：' + heads);
+  assert(heads.includes('PB分位'), '缺 PB 分位列');
+  const markup = JSON.stringify(tree.toJSON() ?? '');
+  assert(markup.includes('12.3'), '未合并 PE 分位 12.3');
+  assert(markup.includes('68.3'), '未合并 PE 分位 68.3');
+});
+
+// --- 批量导入自选股：打开弹窗 → 搜索回车 → 确认写入当前分组
+const importBtn = root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function'
+  && String(node.props.className ?? '').includes('sw-watchImport'))[0];
+check('自选分组条有「导入」按钮', () => assert(importBtn, '找不到导入按钮'));
+await act(async () => {
+  importBtn.props.onClick();
+});
+const importSearch = root.findAll((node) => typeof node.type === 'string' && node.type === 'input'
+  && String(node.props.placeholder ?? '').includes('代码或名称'))[0];
+check('导入弹窗有搜索框', () => assert(importSearch, '找不到搜索输入框'));
+await act(async () => {
+  importSearch.props.onChange({ target: { value: '600036' } });
+});
+const importInput2 = root.findAll((node) => typeof node.type === 'string' && node.type === 'input'
+  && String(node.props.placeholder ?? '').includes('代码或名称'))[0];
+await act(async () => {
+  importInput2.props.onKeyDown({ key: 'Enter', preventDefault() {} });
+});
+check('回车后股票进入上方标签区', () => {
+  const markup = JSON.stringify(tree.toJSON() ?? '');
+  assert(markup.includes('sw-importTag'), '没有标签');
+  assert(markup.includes('招商银行'), '标签里没有招商银行');
+});
+const importConfirm = root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function'
+  && String(node.props.className ?? '').includes('sw-btnPrimary')
+  && textOf(node).includes('加入自选'))[0];
+check('有确认按钮', () => assert(importConfirm, '找不到确认按钮'));
+await act(async () => {
+  importConfirm.props.onClick();
+});
+check('确认后写入 localStorage 自选池', () => {
+  const saved = JSON.parse(store.get('dsh-stock-workbench:watchlist') ?? '{}');
+  const active = saved.groups.find((g) => g.id === saved.active);
+  assert(active.codes.includes('600036'), '自选池未写入 600036：' + JSON.stringify(active.codes));
+});
+
+// --- 收起上方：点击后隐藏指数/筛选，再点恢复
+const collapseBtn = root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function'
+  && textOf(node).includes('收起上方'))[0];
+check('工具栏有「收起上方」按钮', () => assert(collapseBtn, '找不到收起按钮'));
+await act(async () => {
+  collapseBtn.props.onClick();
+});
+const countByClass = (cls) => root.findAll((node) => typeof node.type === 'string'
+  && String(node.props.className ?? '') === cls).length;
+check('收起后指数卡片与筛选区消失', () => {
+  assert(countByClass('sw-cards') === 0, '指数卡片仍在');
+  assert(countByClass('sw-filters') === 0, '筛选面板仍在');
+});
+const expandBtn = root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function'
+  && textOf(node).includes('展开上方'))[0];
+check('出现「展开上方」按钮', () => assert(expandBtn, '找不到展开按钮'));
+await act(async () => {
+  expandBtn.props.onClick();
+});
+check('展开后恢复显示', () => {
+  assert(countByClass('sw-filters') > 0, '筛选面板未恢复');
+  assert(countByClass('sw-cards') > 0, '指数卡片未恢复');
 });
 
 console.log('\n交互测试通过，共 ' + passed + ' 项');

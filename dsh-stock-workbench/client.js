@@ -64,6 +64,7 @@ window.__ModuleLoader__.load({
         case 'lots': return fmtLots(value);
         case 'num': return fmtNum(value);
         case 'streak': return isNum(value) && value > 0 ? `${value >= 10 ? '10+' : value}` : '—';
+        case 'pctile': return isNum(value) ? value.toFixed(1) : '—';
         case 'signed': return fmtSigned(value);
         default: return value == null || value === '' ? '—' : String(value);
       }
@@ -153,7 +154,7 @@ window.__ModuleLoader__.load({
 
     /** 表格上方的一小行工具行：右侧放齿轮 */
     /** 结果表（信号扫描 / 公式选股共用）：列配置驱动 + 点击表头排序 */
-    function ResultTable({ t, columns, rows, onOpen, onConfigColumns, extra }) {
+    function ResultTable({ t, columns, rows, onOpen, onConfigColumns, extra, toolBar }) {
       const activeColumns = columns && columns.length ? columns : [];
       const grid = activeColumns.map((column) => `${column.width}px`).join(' ');
       const offsets = frozenOffsetsOf(activeColumns);
@@ -175,7 +176,7 @@ window.__ModuleLoader__.load({
       };
 
       return h(React.Fragment, null,
-        h(TableToolRow, { t, onConfigColumns }),
+        h(TableToolRow, { t, onConfigColumns, children: toolBar }),
         h('div', { className: 'sw-scanTable' },
           h('div', { className: 'sw-resHead', style: { gridTemplateColumns: grid } },
             activeColumns.map((column) => {
@@ -212,6 +213,18 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'sw-toolRow' },
         children ?? null,
         onConfigColumns ? h(ColumnConfigGear, { t, onClick: onConfigColumns }) : null);
+    }
+
+    /** 表格筛选输入（代码/名称/板块名） */
+    function TableFilterInput({ t, value, onChange, placeholder }) {
+      return h('input', {
+        className: 'sw-input sw-tableFilter',
+        value,
+        placeholder: placeholder ?? t('tableFilterPlaceholder'),
+        'aria-label': placeholder ?? t('tableFilterPlaceholder'),
+        spellCheck: false,
+        onChange: (event) => onChange(event.target.value),
+      });
     }
 
     /** 跟随表格的小齿轮 */
@@ -303,6 +316,17 @@ window.__ModuleLoader__.load({
             : group)),
         }));
       }, [update]);
+      const addMany = React.useCallback((list) => {
+        const codesToAdd = (Array.isArray(list) ? list : [])
+          .filter((code) => typeof code === 'string' && /^\d{6}$/.test(code));
+        if (!codesToAdd.length) return;
+        update((prev) => ({
+          ...prev,
+          groups: prev.groups.map((group) => (group.id === prev.active
+            ? { ...group, codes: [...new Set([...group.codes, ...codesToAdd])] }
+            : group)),
+        }));
+      }, [update]);
       const switchGroup = React.useCallback((id) => update((prev) => ({ ...prev, active: id })), [update]);
       const addGroup = React.useCallback((name) => {
         const id = `g${Date.now().toString(36)}`;
@@ -332,6 +356,7 @@ window.__ModuleLoader__.load({
         set,
         toggle,
         has: (code) => set.has(code),
+        addMany,
         switchGroup,
         addGroup,
         removeGroup,
@@ -339,8 +364,190 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** 把一段混排文本拆成 token：去空格/换行，支持逗号、斜杠、顿号、分号分隔 */
+    function normalizeStockTokens(text) {
+      return String(text ?? '')
+        .replace(/[\s\u3000]+/g, ' ')
+        .split(/[,，/、;；|\s]+/)
+        .map((token) => token.trim())
+        .filter(Boolean);
+    }
+
+    /** token → 股票：6 位代码精确匹配，否则按名称（唯一包含/精确）匹配 */
+    function matchStockTokens(tokens, rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      const byCode = new Map(list.map((row) => [row.code, row]));
+      const matched = [];
+      const unmatched = [];
+      const seen = new Set();
+      for (const token of tokens) {
+        let hit = /^\d{6}$/.test(token) ? byCode.get(token) ?? null : null;
+        if (!hit) {
+          const keyword = token.replace(/\s/g, '').toLowerCase();
+          if (keyword) {
+            const candidates = list.filter((row) => String(row.name ?? '').toLowerCase().includes(keyword));
+            if (candidates.length === 1) hit = candidates[0];
+            else if (candidates.length > 1) hit = candidates.find((row) => String(row.name ?? '').toLowerCase() === keyword) ?? null;
+          }
+        }
+        if (hit) {
+          if (!seen.has(hit.code)) {
+            seen.add(hit.code);
+            matched.push({ code: hit.code, name: hit.name });
+          }
+        } else {
+          unmatched.push(token);
+        }
+      }
+      return { matched, unmatched };
+    }
+
+    /** 模糊搜索（代码/名称） */
+    function searchStocks(keyword, rows, limit = 8) {
+      const text = String(keyword ?? '').trim().toLowerCase();
+      if (!text) return [];
+      return (Array.isArray(rows) ? rows : [])
+        .filter((row) => `${row.code} ${row.name}`.toLowerCase().includes(text))
+        .slice(0, limit);
+    }
+
+    /** 批量导入自选股弹窗 */
+    function WatchlistImportDialog({ t, rows, existing, onAdd, onClose }) {
+      const [picked, setPicked] = React.useState([]);
+      const [query, setQuery] = React.useState('');
+      const [bulk, setBulk] = React.useState('');
+      const [note, setNote] = React.useState('');
+      const pickedSet = React.useMemo(() => new Set(picked.map((item) => item.code)), [picked]);
+      const suggestions = React.useMemo(
+        () => searchStocks(query, rows, 8).filter((row) => !pickedSet.has(row.code)),
+        [query, rows, pickedSet],
+      );
+
+      const addStock = (row) => {
+        if (!row || pickedSet.has(row.code)) return;
+        setPicked((prev) => [...prev, { code: row.code, name: row.name }]);
+        setQuery('');
+        setNote('');
+      };
+      const removePicked = (code) => setPicked((prev) => prev.filter((item) => item.code !== code));
+
+      const acceptQuery = () => {
+        const keyword = query.trim();
+        if (!keyword) return;
+        const { matched, unmatched } = matchStockTokens([keyword], rows);
+        if (matched.length) {
+          const row = (rows ?? []).find((item) => item.code === matched[0].code);
+          addStock(row ?? matched[0]);
+        } else {
+          setNote(`${t('watchImportNoMatch')}：${unmatched[0] ?? keyword}`);
+        }
+      };
+
+      const importBulk = () => {
+        const tokens = normalizeStockTokens(bulk);
+        if (!tokens.length) {
+          setNote(t('watchImportNoTokens'));
+          return;
+        }
+        const { matched, unmatched } = matchStockTokens(tokens, rows);
+        setPicked((prev) => {
+          const next = [...prev];
+          const seen = new Set(next.map((item) => item.code));
+          for (const item of matched) {
+            if (!seen.has(item.code)) {
+              seen.add(item.code);
+              next.push({ code: item.code, name: item.name });
+            }
+          }
+          return next;
+        });
+        setBulk('');
+        setNote(
+          `${t('watchImportMatched')} ${matched.length}`
+          + (unmatched.length ? ` · ${t('watchImportUnmatched')} ${unmatched.length}（${unmatched.slice(0, 3).join('、')}…）` : ''),
+        );
+      };
+
+      const confirm = () => {
+        if (!picked.length) return onClose();
+        onAdd(picked.map((item) => item.code));
+        onClose();
+      };
+
+      return h('div', { className: 'sw-modalMask', onClick: onClose },
+        h('div', {
+          className: 'sw-modal sw-importModal',
+          onClick: (event) => event.stopPropagation(),
+          role: 'dialog',
+          'aria-label': t('watchImportTitle'),
+        },
+        h('div', { className: 'sw-modalHead' },
+          h('span', null, t('watchImportTitle')),
+          h('button', {
+            type: 'button',
+            className: 'sw-btn sw-btnGhost',
+            style: { marginLeft: 'auto' },
+            onClick: onClose,
+          }, '×')),
+        h('div', { className: 'sw-modalBody' },
+          h('div', { className: 'sw-importTags' },
+            picked.length
+              ? picked.map((item) => h('span', { key: item.code, className: 'sw-importTag' },
+                h('span', null, `${item.name} ${item.code}`),
+                h('button', {
+                  type: 'button',
+                  className: 'sw-importTagDel',
+                  title: t('watchImportRemove'),
+                  onClick: () => removePicked(item.code),
+                }, '×')))
+              : h('span', { className: 'sw-importEmpty' }, t('watchImportEmptyTags'))),
+          h('div', { className: 'sw-importSearch' },
+            h('input', {
+              className: 'sw-input',
+              value: query,
+              placeholder: t('watchImportSearchPlaceholder'),
+              autoFocus: true,
+              onChange: (event) => setQuery(event.target.value),
+              onKeyDown: (event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (suggestions.length) addStock(suggestions[0]);
+                  else acceptQuery();
+                }
+                if (event.key === 'Escape') setQuery('');
+              },
+            }),
+            suggestions.length
+              ? h('div', { className: 'sw-importSuggest' },
+                suggestions.map((row) => h('button', {
+                  key: row.code,
+                  type: 'button',
+                  className: 'sw-importSuggestItem',
+                  onClick: () => addStock(row),
+                }, `${row.name} ${row.code}`)))
+              : null),
+          h('div', { className: 'sw-importBulk' },
+            h('textarea', {
+              className: 'sw-aiInput',
+              style: { minHeight: 70 },
+              value: bulk,
+              placeholder: t('watchImportBulkPlaceholder'),
+              onChange: (event) => setBulk(event.target.value),
+            }),
+            h('button', { type: 'button', className: 'sw-btn', onClick: importBulk }, t('watchImportBulkAction'))),
+          note ? h('div', { className: 'sw-importNote' }, note) : null),
+        h('div', { className: 'sw-colFoot' },
+          h('button', { type: 'button', className: 'sw-btn sw-btnGhost', onClick: onClose }, t('cancel')),
+          h('button', {
+            type: 'button',
+            className: 'sw-btn sw-btnPrimary',
+            disabled: !picked.length,
+            onClick: confirm,
+          }, `${t('watchImportConfirm')} ${picked.length}`))));
+    }
+
     /** 自选分组条（放在表格工具行左侧） */
-    function WatchlistBar({ t, groups, active, onSwitch, onAdd, onRemove }) {
+    function WatchlistBar({ t, groups, active, onSwitch, onAdd, onRemove, onImport }) {
       const [creating, setCreating] = React.useState(false);
       const [name, setName] = React.useState('');
       const commit = (value) => {
@@ -390,7 +597,15 @@ window.__ModuleLoader__.load({
             className: 'sw-watchChip sw-watchAdd',
             title: t('watchGroupAdd'),
             onClick: () => setCreating(true),
-          }, '＋'));
+          }, '＋'),
+        onImport
+          ? h('button', {
+            type: 'button',
+            className: 'sw-watchChip sw-watchImport',
+            title: t('watchImportTitle'),
+            onClick: onImport,
+          }, `⤓ ${t('watchImportShort')}`)
+          : null);
     }
 
     // ---------------------------------------------------------------------
@@ -564,6 +779,8 @@ window.__ModuleLoader__.load({
       { key: 'dividendYield', labelKey: 'col.dividendYield', width: 86, align: 'right', kind: 'pctPlain' },
       { key: 'dividendYears', labelKey: 'col.dividendYears', width: 86, align: 'right', kind: 'num', dividendLink: true },
       { key: 'dividendConsecutive', labelKey: 'col.dividendConsecutive', width: 96, align: 'right', kind: 'streak', dividendLink: true },
+      { key: 'pePercentile', labelKey: 'col.pePercentile', width: 92, align: 'right', kind: 'pctile' },
+      { key: 'pbPercentile', labelKey: 'col.pbPercentile', width: 92, align: 'right', kind: 'pctile' },
       { key: 'pb', labelKey: 'col.pb', width: 72, align: 'right', kind: 'num' },
       { key: 'pe', labelKey: 'col.pe', width: 78, align: 'right', kind: 'num' },
       { key: 'roe', labelKey: 'col.roe', width: 78, align: 'right', kind: 'pctPlain' },
@@ -708,6 +925,22 @@ window.__ModuleLoader__.load({
       watchGroupName: '分组名',
       watchGroupRemove: '删除该组',
       watchGroupDefaultName: '新分组',
+      watchImportTitle: '批量导入自选股',
+      watchImportShort: '导入',
+      watchImportRemove: '移除',
+      watchImportSearchPlaceholder: '输入代码或名称搜索，回车添加',
+      watchImportBulkPlaceholder: '粘贴一长串代码/名称（支持空格、换行、逗号、斜杠分隔，也可直接粘中文）',
+      watchImportBulkAction: '识别并添加',
+      watchImportEmptyTags: '还没有选择股票',
+      watchImportNoMatch: '没有匹配到股票',
+      watchImportNoTokens: '没有可识别的内容',
+      watchImportMatched: '已识别',
+      watchImportUnmatched: '未识别',
+      watchImportConfirm: '加入自选',
+      collapseCollapse: '收起上方',
+      collapseExpand: '展开上方',
+      collapseHint: '收起指数、涨跌家数、筛选区，给表格更多行',
+      swCollapsedNote: '已收起上方信息',
       watchEmpty: '自选池还是空的',
       watchEmptyHint: '点榜单最左边的 ☆ 把股票加进来，或双击进详情后点「加入自选」。',
       autoRefresh: '自动刷新',
@@ -732,6 +965,11 @@ window.__ModuleLoader__.load({
       boardMembersLoading: '正在读取成分股…',
       'col.regionBoard': '地域板块',
       'col.concepts': '所属概念',
+      'col.pePercentile': 'PE分位',
+      'col.pbPercentile': 'PB分位',
+      pePctHint: '近 5 年抽样（每月 1 个交易日）百分位，越小越便宜',
+      tableFilterPlaceholder: '筛选代码/名称',
+      boardFilterPlaceholder: '筛选板块',
       flowIn: '主力净流入 TOP',
       flowPctCol: '主力净占比',
       flowOut: '主力净流出 TOP',
@@ -941,6 +1179,22 @@ window.__ModuleLoader__.load({
       watchGroupName: 'Name',
       watchGroupRemove: 'Delete list',
       watchGroupDefaultName: 'New list',
+      watchImportTitle: 'Bulk import watchlist',
+      watchImportShort: 'Import',
+      watchImportRemove: 'Remove',
+      watchImportSearchPlaceholder: 'Search code or name, press Enter to add',
+      watchImportBulkPlaceholder: 'Paste codes/names (spaces, newlines, commas, slashes allowed)',
+      watchImportBulkAction: 'Detect and add',
+      watchImportEmptyTags: 'No stocks selected yet',
+      watchImportNoMatch: 'No matching stock',
+      watchImportNoTokens: 'Nothing to parse',
+      watchImportMatched: 'matched',
+      watchImportUnmatched: 'unmatched',
+      watchImportConfirm: 'Add to watchlist',
+      collapseCollapse: 'Collapse',
+      collapseExpand: 'Expand',
+      collapseHint: 'Hide indices/breadth/filters to give the table more rows',
+      swCollapsedNote: 'Top info collapsed',
       watchEmpty: 'Watchlist is empty',
       watchEmptyHint: 'Click the ☆ at the left of a row, or open a stock and press Add.',
       autoRefresh: 'Auto refresh',
@@ -965,6 +1219,11 @@ window.__ModuleLoader__.load({
       boardMembersLoading: 'Loading constituents…',
       'col.regionBoard': 'Region',
       'col.concepts': 'Concepts',
+      'col.pePercentile': 'PE pct',
+      'col.pbPercentile': 'PB pct',
+      pePctHint: '5y sampled percentile (monthly); lower is cheaper',
+      tableFilterPlaceholder: 'Filter code/name',
+      boardFilterPlaceholder: 'Filter board',
       flowIn: 'Main inflow TOP',
       flowPctCol: 'Main net %',
       flowOut: 'Main outflow TOP',
@@ -1150,6 +1409,26 @@ window.__ModuleLoader__.load({
   border:.5px solid var(--dsw-alias-border-l1,#e5e7eb)}
 .sw-crash .sw-btn{align-self:flex-start}
 .sw-toolRow{flex:none;display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:0 2px 6px}
+.sw-tableFilter{width:170px;height:26px;font-size:12px;padding:0 8px}
+.sw-importModal{width:min(560px,94%)}
+.sw-importTags{display:flex;flex-wrap:wrap;gap:6px;min-height:34px;padding:8px;border-radius:8px;
+  background:var(--dsw-alias-bg-layer-2,#f7f8fa);border:.5px dashed var(--dsw-alias-border-l2,#e5e7eb)}
+.sw-importTag{display:inline-flex;align-items:center;gap:4px;font-size:12px;border-radius:99px;
+  padding:2px 4px 2px 9px;color:var(--dsw-alias-brand-primary,#4f6ef7);
+  background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4f6ef7) 10%,transparent)}
+.sw-importTagDel{font:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0 4px}
+.sw-importEmpty{font-size:12px;color:var(--dsw-alias-label-tertiary,#9aa3b2)}
+.sw-importSearch{position:relative}
+.sw-importSuggest{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:3;max-height:220px;overflow:auto;
+  border-radius:8px;border:.5px solid var(--dsw-alias-border-l2,#e5e7eb);
+  background:var(--dsw-alias-bg-layer-1,#fff);box-shadow:0 10px 26px rgba(0,0,0,.14)}
+.sw-importSuggestItem{display:block;width:100%;text-align:left;font:inherit;font-size:12.5px;cursor:pointer;
+  border:none;background:transparent;padding:7px 10px;color:var(--dsw-alias-label-primary,#1f2328)}
+.sw-importSuggestItem:hover{background:var(--dsw-alias-bg-layer-2,#f5f7fa)}
+.sw-importBulk{display:flex;flex-direction:column;gap:6px}
+.sw-watchImport{font-size:11.5px;padding:2px 9px;color:var(--dsw-alias-label-secondary,#6b7280)}
+.sw-watchImport:hover{color:var(--dsw-alias-brand-primary,#4f6ef7);border-color:var(--dsw-alias-brand-primary,#4f6ef7)}
+/* 表格空间不足时用工具栏「收起上方」按钮，不再用媒体查询固定行数 */
 .sw-boardChip{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:2px 4px 2px 9px;font-size:11.5px;color:var(--dsw-alias-brand-primary,#4f6ef7);border:.5px solid var(--dsw-alias-brand-primary,#4f6ef7);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4f6ef7) 10%,transparent)}
 .sw-boardChipDel{font:inherit;font-size:11px;cursor:pointer;border:none;background:transparent;color:inherit;padding:0 4px;border-radius:99px}
 .sw-boardChipDel:hover{color:var(--dsw-alias-state-error-primary,#dc2626)}
@@ -1940,6 +2219,9 @@ window.__ModuleLoader__.load({
       const [activePreset, setActivePreset] = React.useState(null);
       const [selected, setSelected] = React.useState(null);
       const [dividendDetail, setDividendDetail] = React.useState(null);
+      const [valuationBulk, setValuationBulk] = React.useState({ status: 'idle', map: null });
+      const [importOpen, setImportOpen] = React.useState(false);
+      const [compact, setCompact] = React.useState(false);
       const [columnPrefsByTab, setColumnPrefsByTab] = React.useState(loadColumnPrefsByTab);
       const [configTab, setConfigTab] = React.useState(null);
       const [tab, setTab] = React.useState('list');
@@ -2005,10 +2287,53 @@ window.__ModuleLoader__.load({
       const rows = data?.rows ?? [];
       const meta = data?.meta ?? {};
 
+      const rowsWithValuation = React.useMemo(() => {
+        const map = valuationBulk.map;
+        if (!map) return rows;
+        return rows.map((row) => {
+          const item = map[row.code];
+          return item
+            ? { ...row, pePercentile: item.pePercentile, pbPercentile: item.pbPercentile }
+            : row;
+        });
+      }, [rows, valuationBulk.map]);
+
       const filtered = React.useMemo(() => {
-        const base = sortRows(applyFilters(rows, filters), sort.key, sort.dir);
+        const base = sortRows(applyFilters(rowsWithValuation, filters), sort.key, sort.dir);
         return onlyWatch ? base.filter((row) => watch.set.has(row.code)) : base;
-      }, [rows, filters, sort, onlyWatch, watch.set]);
+      }, [rowsWithValuation, filters, sort, onlyWatch, watch.set]);
+
+      // 全市场估值分位：后台构建，构建中每 4s 轮询
+      React.useEffect(() => {
+        let alive = true;
+        let timer = null;
+        const load = async () => {
+          try {
+            const response = await fetch(apiUrl('dsh-stock/api/v1/valuation-percentiles'), {
+              headers: { accept: 'application/json' },
+            });
+            const body = await response.json().catch(() => null);
+            if (!alive) return;
+            if (!body || body.ok !== true) throw new Error((body && body.error) || `HTTP ${response.status}`);
+            const data = body.data ?? {};
+            if (data.status === 'ready' && data.map) {
+              setValuationBulk({ status: 'ready', map: data.map });
+            } else if (data.status === 'building') {
+              setValuationBulk((prev) => (prev.map ? prev : { status: 'building', map: null }));
+              timer = setTimeout(load, 4000);
+            } else {
+              setValuationBulk({ status: data.status ?? 'idle', map: null });
+            }
+          } catch {
+            if (alive) setValuationBulk({ status: 'error', map: null });
+          }
+        };
+        load();
+        return () => {
+          alive = false;
+          if (timer) clearTimeout(timer);
+        };
+      }, []);
 
       const activeColumnsByTab = React.useMemo(() => {
         const sets = { ...COLUMN_SETS, list: COLUMNS };
@@ -2180,6 +2505,12 @@ window.__ModuleLoader__.load({
                 .map(([value, label]) => h('option', { key: value, value: String(value) }, label)))),
             h('button', {
               type: 'button',
+              className: 'sw-btn sw-btnGhost',
+              onClick: () => setCompact((value) => !value),
+              title: t('collapseHint'),
+            }, compact ? `▾ ${t('collapseExpand')}` : `▴ ${t('collapseCollapse')}`),
+            h('button', {
+              type: 'button',
               className: 'sw-btn',
               onClick: exportCsv,
               disabled: !filtered.length,
@@ -2206,7 +2537,7 @@ window.__ModuleLoader__.load({
           ? h('div', { className: 'sw-banner sw-bannerWarn' }, t('errorHint'))
           : null,
 
-        data
+        data && !compact
           ? h(React.Fragment, null,
             h('section', { className: 'sw-cards' },
               (data.indices ?? []).map((item) => h(IndexCard, { key: item.code, item, t }))),
@@ -2222,7 +2553,7 @@ window.__ModuleLoader__.load({
                 : tab === 'formula'
                   ? h(FormulaPanel, { t, onOpen: setSelected, columns: activeColumnsByTab.formula, onConfigColumns: () => openColumnConfig('formula'), onOpenDividend: openDividend })
                 : h(React.Fragment, null,
-              h(FilterPanel, {
+              compact ? null : h(FilterPanel, {
                 filters,
                 setFilters,
                 t,
@@ -2268,6 +2599,7 @@ window.__ModuleLoader__.load({
                         onSwitch: watch.switchGroup,
                         onAdd: watch.addGroup,
                         onRemove: watch.removeGroup,
+                        onImport: () => setImportOpen(true),
                       }),
                     })),
 
@@ -2302,6 +2634,15 @@ window.__ModuleLoader__.load({
             });
           })()
           : null,
+        importOpen
+          ? h(WatchlistImportDialog, {
+            t,
+            rows,
+            existing: watch.set,
+            onAdd: watch.addMany,
+            onClose: () => setImportOpen(false),
+          })
+          : null,
         dividendDetail
           ? h(DividendDetailModal, {
             state: dividendDetail,
@@ -2331,6 +2672,7 @@ window.__ModuleLoader__.load({
           : { status: 'loading', boards: [], error: null, meta: null }
       ));
       const [sort, setSort] = React.useState({ key: 'mainIn', dir: 'desc' });
+      const [boardFilter, setBoardFilter] = React.useState('');
 
       React.useEffect(() => {
         if (initialBoards) return undefined;
@@ -2354,12 +2696,16 @@ window.__ModuleLoader__.load({
       const activeColumns = columns && columns.length ? columns : BOARD_COLUMNS;
       const grid = activeColumns.map((column) => `${column.width}px`).join(' ');
       const sorted = React.useMemo(() => {
+        const keyword = boardFilter.trim();
+        const source = keyword
+          ? (state.boards ?? []).filter((board) => String(board.name ?? '').includes(keyword))
+          : (state.boards ?? []);
         try {
-          return sortRows(state.boards ?? [], sort.key, sort.dir);
+          return sortRows(source, sort.key, sort.dir);
         } catch {
           return state.boards ?? [];
         }
-      }, [state.boards, sort]);
+      }, [state.boards, sort, boardFilter]);
 
       const toggleSort = (key) => setSort((prev) => (prev.key === key
         ? { key, dir: prev.dir === 'desc' ? 'asc' : 'desc' }
@@ -2428,15 +2774,22 @@ window.__ModuleLoader__.load({
           h('span', { className: 'sw-scanHint' }, t('boardHint')),
           h('span', { style: { flex: 1 } }),
           state.meta ? h('span', { className: 'sw-scanDetail' }, `${state.meta.boards?.length ?? sorted.length} ${t('boardCount')}`) : null,
+          h(TableFilterInput, { t, value: boardFilter, onChange: setBoardFilter, placeholder: t('boardFilterPlaceholder') }),
           h(ColumnConfigGear, { t, onClick: onConfigColumns })),
         h('div', { className: 'sw-scanHint' }, t('boardPickHint')),
         body);
     }
 
     function MoneyFlowPanel({ rows, t, onOpen, columns, onConfigColumns }) {
+      const [rowFilter, setRowFilter] = React.useState('');
+      const applyRowFilter = React.useCallback((list) => {
+        const keyword = rowFilter.trim().toLowerCase();
+        if (!keyword) return list;
+        return list.filter((row) => `${row.code} ${row.name}`.toLowerCase().includes(keyword));
+      }, [rowFilter]);
       const usable = React.useMemo(
-        () => rows.filter((row) => typeof row.mainIn === 'number' && row.mainIn !== 0),
-        [rows],
+        () => applyRowFilter(rows).filter((row) => typeof row.mainIn === 'number' && row.mainIn !== 0),
+        [rows, applyRowFilter],
       );
       const inflow = React.useMemo(
         () => [...usable].sort((a, b) => b.mainIn - a.mainIn).slice(0, 30),
@@ -2489,7 +2842,11 @@ window.__ModuleLoader__.load({
           h('span', { className: 'sw-up' }, t('flowInCount'), ' ', h('b', null, netIn)),
           h('span', { className: 'sw-down' }, t('flowOutCount'), ' ', h('b', null, netOut)),
           h('span', { style: { opacity: 0.8 } }, t('flowHint'))),
-        h(TableToolRow, { t, onConfigColumns }),
+        h(TableToolRow, {
+          t,
+          onConfigColumns,
+          children: h(TableFilterInput, { t, value: rowFilter, onChange: setRowFilter }),
+        }),
         h('div', { className: 'sw-flowCols' },
           side(t('flowIn'), inflow),
           side(t('flowOut'), outflow)));
@@ -2534,6 +2891,7 @@ window.__ModuleLoader__.load({
     }
 
     function FormulaPanel({ t, onOpen, initialFavOpen = false, columns, onConfigColumns, onOpenDividend }) {
+      const [rowFilter, setRowFilter] = React.useState('');
       const [favOpen, setFavOpen] = React.useState(initialFavOpen);
       const [activeFavId, setActiveFavId] = React.useState(null);
       const [expr, setExpr] = React.useState('量比 > 2 且 涨跌幅 between 3 and 7');
@@ -2813,7 +3171,11 @@ window.__ModuleLoader__.load({
         body = h(ResultTable, {
           t,
           columns: columns && columns.length ? columns : FORMULA_COLUMNS,
-          rows: data.rows,
+          rows: (data.rows ?? []).filter((row) => {
+            const keyword = rowFilter.trim().toLowerCase();
+            return !keyword || `${row.code} ${row.name}`.toLowerCase().includes(keyword);
+          }),
+          toolBar: h(TableFilterInput, { t, value: rowFilter, onChange: setRowFilter }),
           onOpen,
           onConfigColumns,
           extra: { onOpenDividend },
@@ -3123,6 +3485,7 @@ window.__ModuleLoader__.load({
     const SCAN_GRID = '86px 122px 80px 84px 96px 76px 172px minmax(220px, 1fr)';
 
     function SignalScanPanel({ t, onOpen, columns, onConfigColumns, onOpenDividend }) {
+      const [rowFilter, setRowFilter] = React.useState('');
       const [meta, setMeta] = React.useState(FALLBACK_SIGNALS);
       const [selected, setSelected] = React.useState(['ma_golden', 'macd_golden']);
       const [minAmount, setMinAmount] = React.useState('1');
@@ -3212,7 +3575,11 @@ window.__ModuleLoader__.load({
         body = h(ResultTable, {
           t,
           columns: columns && columns.length ? columns : SCAN_COLUMNS,
-          rows: data.matches,
+          rows: (data.matches ?? []).filter((row) => {
+            const keyword = rowFilter.trim().toLowerCase();
+            return !keyword || `${row.code} ${row.name}`.toLowerCase().includes(keyword);
+          }),
+          toolBar: h(TableFilterInput, { t, value: rowFilter, onChange: setRowFilter }),
           onOpen,
           onConfigColumns,
           extra: { labelOf, onOpenDividend },
@@ -4840,12 +5207,17 @@ window.__ModuleLoader__.load({
         WorkbenchBoundary,
         ColumnConfigDialog,
         ColumnConfigGear,
+        TableFilterInput,
         TableToolRow,
         ResultTable,
         BoardPanel,
         BOARD_COLUMNS,
         StockDetailPopover,
         WatchlistBar,
+        WatchlistImportDialog,
+        normalizeStockTokens,
+        matchStockTokens,
+        searchStocks,
         normalizeWatchState,
         defaultWatchState,
         columnCellContent,
