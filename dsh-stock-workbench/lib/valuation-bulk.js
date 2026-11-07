@@ -9,7 +9,7 @@
  * 成本：60 日期 × 12 页 ≈ 720 请求 / 并发 8 → 约 20~30s；结果落盘 12h 有效。
  * 精度：60 个采样点 → 分位分辨率约 1.7%，用于排序/筛选足够，UI 需标注「抽样」。
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -240,6 +240,20 @@ export function createBulkValuationSource({ ttlMs = CACHE_MS } = {}) {
       }
       startBuild();
       return { status: 'building', progress, building: true };
+    },
+    /** 重载用：清空内存并删除磁盘快照（下次请求重新抽样构建） */
+    clear({ clearDisk = true } = {}) {
+      cache = null;
+      diskLoaded = true;
+      building = null;
+      if (clearDisk) {
+        try {
+          unlinkSync(CACHE_FILE);
+        } catch {
+          /* 没有快照文件 */
+        }
+      }
+      return ['valuation-percentiles'];
     },
     /** 测试用：手动触发一次完整构建 */
     async buildNow(options) {

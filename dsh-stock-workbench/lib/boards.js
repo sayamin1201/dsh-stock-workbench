@@ -96,6 +96,12 @@ export function createBoardSource({ ttlMs = CACHE_MS } = {}) {
       inflight.set(key, promise);
       return promise;
     },
+    /** 重载用 */
+    clear() {
+      cache.clear();
+      inflight.clear();
+      return ['boards'];
+    },
   };
 }
 
@@ -143,6 +149,12 @@ export function createBoardMemberSource({ ttlMs = 5 * 60 * 1000 } = {}) {
         .finally(() => inflight.delete(key));
       inflight.set(key, promise);
       return promise;
+    },
+    /** 重载用 */
+    clear() {
+      cache.clear();
+      inflight.clear();
+      return ['board-members'];
     },
   };
 }

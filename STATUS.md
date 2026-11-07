@@ -29,7 +29,7 @@ test/                query 25 / signals 15 / formula 34 / host 端到端（含�
 
 ## Host 路由（9 条）
 
-`GET /dsh-stock/api/v1/` → `health`、`dashboard[?force=1]`、`kline?secid&klt&lmt`、`trends?secid`、`signals`、`scan?signals&minAmount&limit&within&klt`、`formula/fields`、`formula/validate?expr`、`formula?expr&limit`、`dividend?code`、`boards?type`、`board-members?code`、`valuation?code`、`valuation-percentiles`（**14 条**）
+`GET /dsh-stock/api/v1/` → `health`、`dashboard[?force=1]`、`kline?secid&klt&lmt`、`trends?secid`、`signals`、`scan?signals&minAmount&limit&within&klt`、`formula/fields`、`formula/validate?expr`、`formula?expr&limit`、`dividend?code`、`boards?type`、`board-members?code`、`valuation?code`、`valuation-percentiles`（**16 条**，含 `data-sources` / `reload`）
 
 ## 能力清单
 

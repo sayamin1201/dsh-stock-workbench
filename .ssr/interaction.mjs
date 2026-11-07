@@ -57,7 +57,7 @@ function fakeDashboard() {
       ],
       breadth: { up: 2, down: 2, flat: 0, limitUp: 1, limitDown: 0, tradingDay: '20261104' },
       stats: { up: 2, down: 2, flat: 0, amount: 1.1e12, mainIn: 0, count: 4 },
-      meta: { fetchedAt: Date.now(), upstreamMs: 300, universeCount: 4, count: 4, failedBatches: [], tradingDay: '20261104' },
+      meta: { fetchedAt: Date.now(), upstreamMs: 300, universeCount: 4, count: 4, failedBatches: [], tradingDay: '20261104', provider: 'tencent', providerLabel: '腾讯行情', preferredProvider: 'eastmoney', providerFallback: [{ provider: 'eastmoney', label: '东方财富', error: 'blocked' }], providerMissingFields: ['mainIn', 'roe'] },
     },
   };
 }
@@ -99,6 +99,26 @@ globalThis.fetch = async (url) => {
             { code: 'BK0917', name: '半导体概念', pct: 7.47, mainIn: 2.78e10, mainInPct: 6.22, up: 531, down: 15 },
             { code: 'BK0596', name: '融资融券', pct: 3.36, mainIn: 4.73e10, mainInPct: 2.6, up: 3361, down: 459 },
           ],
+        },
+      }),
+    };
+  }
+  if (href.includes('data-sources')) {
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        ok: true,
+        data: {
+          preferred: 'eastmoney',
+          providers: [
+            { id: 'eastmoney', label: '东方财富', capabilities: { snapshot: true }, missingFields: [] },
+            { id: 'tencent', label: '腾讯行情', capabilities: { snapshot: true }, missingFields: ['mainIn'] },
+            { id: 'sina', label: '新浪行情', capabilities: { snapshot: true }, missingFields: ['pe'] },
+          ],
+          health: {},
+          missingFields: [],
         },
       }),
     };
@@ -636,6 +656,22 @@ await act(async () => {
 check('展开后恢复显示', () => {
   assert(countByClass('sw-filters') > 0, '筛选面板未恢复');
   assert(countByClass('sw-cards') > 0, '指数卡片未恢复');
+});
+
+// --- 行情源选择器跟随「实际使用源」：首选东财、实际腾讯 → 选择器显示腾讯并标注自动切换
+check('行情源选择器跟随实际使用源', () => {
+  const selects = root.findAll((node) => typeof node.type === 'string' && node.type === 'select');
+  const dsSelect = selects.find((node) => {
+    const options = node.findAll((child) => typeof child.type === 'string' && child.type === 'option')
+      .map((child) => textOf(child))
+      .join('|');
+    return options.includes('腾讯行情') && options.includes('东方财富');
+  });
+  assert(dsSelect, '找不到行情源选择器');
+  assert(dsSelect.props.value === 'tencent', '选择器应显示实际使用源 tencent，实际 ' + dsSelect.props.value);
+  const markup = JSON.stringify(tree.toJSON() ?? '');
+  assert(markup.includes('自动切换'), '缺少「已自动切换」标记');
+  assert(markup.includes('首选'), '缺少首选源说明');
 });
 
 console.log('\n交互测试通过，共 ' + passed + ' 项');

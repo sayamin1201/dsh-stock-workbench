@@ -85,6 +85,9 @@ dsh-stock-workbench/
 | GET | `/dsh-stock/api/v1/board-members?code=BK0917` | 板块成分股代码列表（最多 3890 只 / 39 页，5 分钟缓存） |
 | GET | `/dsh-stock/api/v1/valuation?code=600036` | 单只估值分位（逐日精确）：PE/PB 当前值 + 近 5 年百分位 + 样本天数 |
 | GET | `/dsh-stock/api/v1/valuation-percentiles` | 全市场批量估值分位（近 5 年每月抽样，供榜单 PE分位/PB分位 列排序；首次构建约 1 分钟，磁盘缓存 12h） |
+| POST | `/dsh-stock/api/v1/reload` | 重载：清空全部缓存（快照/代码全集/分红/板块/估值分位）并立刻重新走一遍真实请求；主源限频时自动改用备用源，返回清理项与耗时 |
+| GET | `/dsh-stock/api/v1/data-sources` | 行情数据源清单（东财 / 腾讯 / 新浪）、当前源、健康状态、各源缺失字段 |
+| POST | `/dsh-stock/api/v1/data-sources` | 切换行情源（body: `{"provider":"tencent"}`），持久化到 `state/data-source.json` |
 | GET | `/dsh-stock/api/v1/health` | 存活探针 |
 
 ### 公式写法（容忍日常书写习惯）

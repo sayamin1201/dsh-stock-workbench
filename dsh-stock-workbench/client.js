@@ -215,6 +215,12 @@ window.__ModuleLoader__.load({
         onConfigColumns ? h(ColumnConfigGear, { t, onClick: onConfigColumns }) : null);
     }
 
+    /** 行情源缺失字段 → 中文名（词典 key: field.<key>，缺失时回退原 key） */
+    function providerFieldLabel(t, key) {
+      const label = t(`field.${key}`);
+      return label === `field.${key}` ? key : label;
+    }
+
     /** 表格筛选输入（代码/名称/板块名） */
     function TableFilterInput({ t, value, onChange, placeholder }) {
       return h('input', {
@@ -824,6 +830,39 @@ window.__ModuleLoader__.load({
       loadFailed: '加载失败',
       retry: '重试',
       dataDate: '数据日期',
+      dataSource: '行情源',
+      dataSourceHint: '东财不可用时可切换到腾讯/新浪（能力不同：备用源不提供主力净流入、ROE 等基本面字段）',
+      dataSourcePreferred: '首选',
+      dataSourceAutoSwitched: '已自动切换',
+      providerMissing: '当前行情源不提供：',
+      providerFallback: '已自动切换到备用源：',
+      'field.mainIn': '主力净流入',
+      'field.mainInPct': '主力净占比',
+      'field.roe': 'ROE',
+      'field.revenueYoy': '营收同比',
+      'field.profitYoy': '净利同比',
+      'field.grossMargin': '毛利率',
+      'field.debtRatio': '负债率',
+      'field.eps': '每股收益',
+      'field.bvps': '每股净资产',
+      'field.ps': '市销率',
+      'field.pct5d': '5日涨跌',
+      'field.speed': '涨速',
+      'field.pct5m': '5分钟涨跌',
+      'field.industry': '所属行业',
+      'field.regionBoard': '地域板块',
+      'field.concepts': '所属概念',
+      'field.pe': '市盈率',
+      'field.pb': '市净率',
+      'field.mcap': '总市值',
+      'field.floatMcap': '流通市值',
+      'field.turnover': '换手率',
+      'field.volumeRatio': '量比',
+      reload: '重载',
+      reloading: '重载中…',
+      reloadHint: '清空全部缓存（快照/代码全集/分红/板块/估值），重新走一遍真实请求',
+      reloadDone: '已清空缓存并重新请求',
+      reloadFailed: '重载失败',
       snapshotAt: '快照',
       took: '耗时',
       universe: '全A',
@@ -1078,6 +1117,39 @@ window.__ModuleLoader__.load({
       loadFailed: 'Failed to load',
       retry: 'Retry',
       dataDate: 'Data date',
+      dataSource: 'Source',
+      dataSourceHint: 'Switch to Tencent/Sina when Eastmoney is down',
+      dataSourcePreferred: 'preferred',
+      dataSourceAutoSwitched: 'auto-switched',
+      providerMissing: 'Not provided by current source: ',
+      providerFallback: 'Fell back to: ',
+      'field.mainIn': 'main inflow',
+      'field.mainInPct': 'main inflow %',
+      'field.roe': 'ROE',
+      'field.revenueYoy': 'revenue YoY',
+      'field.profitYoy': 'profit YoY',
+      'field.grossMargin': 'gross margin',
+      'field.debtRatio': 'debt ratio',
+      'field.eps': 'EPS',
+      'field.bvps': 'BVPS',
+      'field.ps': 'P/S',
+      'field.pct5d': '5d change',
+      'field.speed': 'speed',
+      'field.pct5m': '5m change',
+      'field.industry': 'industry',
+      'field.regionBoard': 'region board',
+      'field.concepts': 'concepts',
+      'field.pe': 'PE',
+      'field.pb': 'PB',
+      'field.mcap': 'market cap',
+      'field.floatMcap': 'float cap',
+      'field.turnover': 'turnover',
+      'field.volumeRatio': 'volume ratio',
+      reload: 'Reload',
+      reloading: 'Reloading…',
+      reloadHint: 'Clear all caches and re-run real requests',
+      reloadDone: 'Caches cleared and refetched',
+      reloadFailed: 'Reload failed',
       snapshotAt: 'Snapshot',
       took: 'Took',
       universe: 'Universe',
@@ -1343,6 +1415,13 @@ window.__ModuleLoader__.load({
 .sw-title{font-size:17px;font-weight:650;margin:0;letter-spacing:.01em}
 .sw-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px}
 .sw-meta b{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600;font-variant-numeric:tabular-nums}
+.sw-metaWarn{color:var(--dsw-alias-label-warning,#b45309);margin-left:4px}
+.sw-footSource{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto;color:var(--dsw-alias-label-secondary,#6b7280)}
+.sw-footMeta{display:inline-flex;align-items:center;gap:12px}
+.sw-footMeta b{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600;font-variant-numeric:tabular-nums}
+.sw-footSourceField{display:inline-flex;align-items:center;gap:4px}
+.sw-selectMini{height:22px;font-size:11.5px;padding:0 4px}
+.sw-footMissing{opacity:.8}
 .sw-headActions{margin-left:auto;display:flex;align-items:center;gap:8px}
 .sw-btn{font:inherit;cursor:pointer;border-radius:8px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;
   border:.5px solid var(--dsw-alias-border-l2,#e5e7eb);background:var(--dsw-alias-bg-layer-1,#fff);
@@ -2285,7 +2364,19 @@ window.__ModuleLoader__.load({
 
       const data = state.data;
       const rows = data?.rows ?? [];
+      const [dataSources, setDataSources] = React.useState({ preferred: '', providers: [], missingFields: [] });
+      const [reloadState, setReloadState] = React.useState({ status: 'idle', note: '' });
       const meta = data?.meta ?? {};
+      // 选择器跟随「实际使用源」：自动回退时显示真正在用的源（首选源另行标注）
+      const preferredSource = dataSources.preferred;
+      const actualSource = (meta && meta.provider) || preferredSource;
+      const sourceOptions = dataSources.providers ?? [];
+      const selectedSource = sourceOptions.some((provider) => provider.id === actualSource)
+        ? actualSource
+        : preferredSource;
+      const autoSwitched = Boolean(
+        meta && meta.provider && preferredSource && meta.provider !== preferredSource,
+      );
 
       const rowsWithValuation = React.useMemo(() => {
         const map = valuationBulk.map;
@@ -2302,6 +2393,55 @@ window.__ModuleLoader__.load({
         const base = sortRows(applyFilters(rowsWithValuation, filters), sort.key, sort.dir);
         return onlyWatch ? base.filter((row) => watch.set.has(row.code)) : base;
       }, [rowsWithValuation, filters, sort, onlyWatch, watch.set]);
+
+      // 行情数据源：列表 + 手动切换（服务端持久化）
+      React.useEffect(() => {
+        let alive = true;
+        fetch(apiUrl('dsh-stock/api/v1/data-sources'), { headers: { accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((body) => {
+            if (alive && body && body.ok === true && body.data) {
+              setDataSources({ preferred: '', providers: [], missingFields: [], ...body.data });
+            }
+          })
+          .catch(() => {});
+        return () => {
+          alive = false;
+        };
+      }, []);
+      const switchDataSource = React.useCallback((id) => {
+        fetch(apiUrl('dsh-stock/api/v1/data-sources'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ provider: id }),
+        })
+          .then((response) => response.json())
+          .then((body) => {
+            if (body && body.ok === true && body.data) {
+              setDataSources({ preferred: '', providers: [], missingFields: [], ...body.data });
+            }
+            load(true);
+          })
+          .catch(() => {});
+      }, []);
+      // 重载：清空全部缓存后重新走一遍真实请求
+      const reloadAll = React.useCallback(() => {
+        setReloadState({ status: 'loading', note: '' });
+        fetch(apiUrl('dsh-stock/api/v1/reload'), { method: 'POST', headers: { accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((body) => {
+            if (!body || body.ok !== true) throw new Error((body && body.error) || 'error');
+            const data = body.data ?? {};
+            setReloadState({
+              status: 'done',
+              note: `${t('reloadDone')}：${data.meta?.providerLabel ?? data.meta?.provider ?? '-'} · ${data.rows ?? '-'} 行 · ${Math.round((data.ms ?? 0) / 100) / 10}s`,
+            });
+            load(true);
+          })
+          .catch((error) => {
+            setReloadState({ status: 'error', note: `${t('reloadFailed')}：${error.message}` });
+          });
+      }, []);
 
       // 全市场估值分位：后台构建，构建中每 4s 轮询
       React.useEffect(() => {
@@ -2489,12 +2629,38 @@ window.__ModuleLoader__.load({
               className: 'sw-tab' + (tab === 'formula' ? ' sw-tabOn' : ''),
               onClick: () => setTab('formula'),
             }, t('tabFormula'))),
-          h('div', { className: 'sw-meta' },
-            h('span', null, t('dataDate'), ' ', h('b', null, tradingDay)),
-            h('span', null, t('snapshotAt'), ' ', h('b', null, snapshotTime)),
-            h('span', null, t('universe'), ' ', h('b', null, meta.count ?? '—'), ' / ', meta.universeCount ?? '—'),
-            h('span', null, t('took'), ' ', h('b', null, meta.upstreamMs != null ? `${meta.upstreamMs}ms` : '—'))),
           h('div', { className: 'sw-headActions' },
+            (sourceOptions ?? []).length
+              ? h('label', { className: 'sw-field' },
+                h('span', { className: 'sw-filterLabel' }, t('dataSource')),
+                h('select', {
+                  className: 'sw-select sw-selectMini',
+                  value: selectedSource,
+                  title: `${t('dataSourceHint')}${autoSwitched
+                    ? `（${t('dataSourcePreferred')}：${sourceOptions.find((provider) => provider.id === preferredSource)?.label ?? preferredSource}，${t('dataSourceAutoSwitched')}）`
+                    : ''}`,
+                  onChange: (event) => switchDataSource(event.target.value),
+                }, sourceOptions.map((provider) => h('option', {
+                  key: provider.id,
+                  value: provider.id,
+                }, provider.label))),
+                autoSwitched
+                  ? h('span', {
+                    className: 'sw-metaWarn',
+                    title: `${t('dataSourcePreferred')}：${sourceOptions.find((provider) => provider.id === preferredSource)?.label ?? preferredSource}`,
+                  }, `· ${t('dataSourceAutoSwitched')}`)
+                  : null)
+              : null,
+            h('button', {
+              type: 'button',
+              className: 'sw-btn',
+              disabled: reloadState.status === 'loading',
+              title: t('reloadHint'),
+              onClick: reloadAll,
+            }, reloadState.status === 'loading'
+              ? h('span', { className: 'sw-spinner' })
+              : null,
+              reloadState.status === 'loading' ? t('reloading') : `⟳ ${t('reload')}`),
             h('label', { className: 'sw-field' },
               h('span', { className: 'sw-filterLabel' }, t('autoRefresh')),
               h('select', {
@@ -2531,6 +2697,12 @@ window.__ModuleLoader__.load({
             h('span', null, t('loadFailed'), '：', state.error),
             h('button', { type: 'button', className: 'sw-btn sw-btnGhost', onClick: () => load(true) }, t('retry')),
             h('span', { style: { opacity: 0.75 } }, t('errorHint')))
+          : null,
+
+        reloadState.note
+          ? h('div', { className: 'sw-banner ' + (reloadState.status === 'error' ? 'sw-bannerError' : 'sw-bannerWarn') },
+            h('span', null, reloadState.note),
+            h('button', { type: 'button', className: 'sw-btn sw-btnGhost', onClick: () => setReloadState({ status: 'idle', note: '' }) }, '×'))
           : null,
 
         data && data.meta && data.meta.stale
@@ -2607,8 +2779,21 @@ window.__ModuleLoader__.load({
           h('span', null, t('matched'), ' ', h('b', null, filtered.length),
             ' / ', t('universe'), ' ', h('b', null, meta.count ?? rows.length)),
           h('span', { style: { opacity: 0.8 } }, t('dblClickHint')),
-          h('span', { style: { marginLeft: 'auto' } }, t('payloadHint'),
-            data ? ` · ${t('snapshotAt')} ${snapshotTime}` : '')));
+          h('span', { className: 'sw-footSource' },
+            h('span', { className: 'sw-footMeta' },
+              h('span', null, t('dataDate'), ' ', h('b', null, tradingDay)),
+              h('span', null, t('snapshotAt'), ' ', h('b', null, snapshotTime)),
+              h('span', null, t('universe'), ' ', h('b', null, meta.count ?? rows.length), ' / ', meta.universeCount ?? '—'),
+              h('span', null, t('took'), ' ', h('b', null, meta.upstreamMs != null ? `${meta.upstreamMs}ms` : '—'))),
+            meta.stale ? h('span', { className: 'sw-metaWarn' }, ' · 旧快照') : null,
+            data && data.meta && data.meta.providerMissingFields && data.meta.providerMissingFields.length
+              ? h('span', {
+                className: 'sw-footMissing',
+                title: `${t('providerMissing')}${data.meta.providerMissingFields.map((key) => providerFieldLabel(t, key)).join(' / ')}`,
+              }, `· ${t('providerMissing')}${data.meta.providerMissingFields.slice(0, 4).map((key) => providerFieldLabel(t, key)).join(' / ')}${data.meta.providerMissingFields.length > 4 ? ' …' : ''}`)
+              : null,
+            h('span', { style: { opacity: 0.8 } }, t('payloadHint'),
+              data ? ` · ${t('snapshotAt')} ${snapshotTime}` : ''))));
 
       return h('div', { className: 'sw-host' },
         h('div', { className: selected ? 'sw-layer sw-layerHidden' : 'sw-layer' }, workbench),
@@ -5208,6 +5393,7 @@ window.__ModuleLoader__.load({
         ColumnConfigDialog,
         ColumnConfigGear,
         TableFilterInput,
+        providerFieldLabel,
         TableToolRow,
         ResultTable,
         BoardPanel,

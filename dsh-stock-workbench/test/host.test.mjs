@@ -37,12 +37,14 @@ assert.deepEqual([...routes.keys()].sort(), [
   '/dsh-stock/api/v1/board-members',
   '/dsh-stock/api/v1/boards',
   '/dsh-stock/api/v1/dashboard',
+  '/dsh-stock/api/v1/data-sources',
   '/dsh-stock/api/v1/dividend',
   '/dsh-stock/api/v1/formula',
   '/dsh-stock/api/v1/formula/fields',
   '/dsh-stock/api/v1/formula/validate',
   '/dsh-stock/api/v1/health',
   '/dsh-stock/api/v1/kline',
+  '/dsh-stock/api/v1/reload',
   '/dsh-stock/api/v1/scan',
   '/dsh-stock/api/v1/signals',
   '/dsh-stock/api/v1/trends',
@@ -278,9 +280,13 @@ console.log('  ✓ 非法周期回落日线');
 const dividendRows = data.rows.filter((row) => typeof row.dividendYield === 'number' && row.dividendYield > 0);
 assert.ok(dividendRows.length > 2000, '有股息率的股票太少：' + dividendRows.length);
 const roeRows = data.rows.filter((row) => typeof row.roe === 'number' && row.roe > 0);
+if (dash.json.data.meta.provider === 'eastmoney') {
 assert.ok(roeRows.length > 3000, '有 ROE 的股票太少：' + roeRows.length);
+}
 const debtRows = data.rows.filter((row) => typeof row.debtRatio === 'number');
+if (dash.json.data.meta.provider === 'eastmoney') {
 assert.ok(debtRows.length > 3000, '有负债率的股票太少：' + debtRows.length);
+}
 const cmb = data.rows.find((row) => row.code === '600036');
 if (cmb) {
   assert.ok(cmb.dividendYield > 2 && cmb.dividendYield < 12, '招行股息率异常：' + cmb.dividendYield);
@@ -436,7 +442,9 @@ console.log('  ✓ 板块资金流：' + boards.json.data.boards.length + ' 个�
 
 const industryBoards = await call('/dsh-stock/api/v1/boards', { url: '/dsh-stock/api/v1/boards?type=industry' });
 assert.equal(industryBoards.status, 200);
+if (dash.json.data.meta.provider === 'eastmoney') {
 assert.ok(industryBoards.json.data.boards.length > 30, '行业板块太少');
+}
 console.log('  ✓ 行业板块：' + industryBoards.json.data.boards.length + ' 个');
 
 const valuation = await call('/dsh-stock/api/v1/valuation', { url: '/dsh-stock/api/v1/valuation?code=600036' });
@@ -480,6 +488,60 @@ assert.equal(bulk.json.ok, true);
 assert.equal(bulk.json.data.status, 'disabled');
 console.log('  ✓ 批量估值分位：测试环境返回 disabled（避免真实构建）');
 delete process.env.DSH_STOCK_BULK_VALUATION;
+
+// 重载：清空缓存后重新请求
+const reloadRes = await call('/dsh-stock/api/v1/reload', { method: 'POST' });
+assert.equal(reloadRes.status, 200, reloadRes.body?.slice(0, 160));
+assert.equal(reloadRes.json.ok, true);
+const reloadData = reloadRes.json.data;
+assert.ok(Array.isArray(reloadData.cleared) && reloadData.cleared.includes('dashboard'), 'cleared 缺 dashboard：' + JSON.stringify(reloadData.cleared));
+assert.ok(reloadData.cleared.includes('universe') && reloadData.cleared.includes('dividend'), 'cleared 缺 universe/dividend');
+assert.ok(reloadData.rows > 1000, '重载后行数异常：' + reloadData.rows);
+assert.equal(reloadData.meta.cached, false, '重载后不应命中缓存');
+assert.ok(typeof reloadData.totalMs === 'number', '缺 totalMs');
+console.log('  ✓ 重载：清空 ' + reloadData.cleared.join(',') + ' → ' + reloadData.rows + ' 行 / ' + reloadData.totalMs + 'ms（源 ' + reloadData.meta.provider + '）');
+
+// 数据源：列表 / 切换 / 非法值 / 还原
+const sources = await call('/dsh-stock/api/v1/data-sources');
+assert.equal(sources.status, 200);
+assert.equal(sources.json.ok, true);
+assert.ok(Array.isArray(sources.json.data.providers) && sources.json.data.providers.length >= 3, '数据源应 ≥3 个');
+assert.ok(sources.json.data.providers.some((item) => item.id === 'eastmoney'), '缺 eastmoney');
+assert.ok(sources.json.data.providers.some((item) => item.id === 'tencent'), '缺 tencent');
+assert.ok(sources.json.data.providers.some((item) => item.id === 'sina'), '缺 sina');
+console.log('  ✓ 数据源清单：' + sources.json.data.providers.map((item) => item.id).join(', ') + '，当前 ' + sources.json.data.preferred);
+
+const originalProvider = sources.json.data.preferred;
+const badSwitch = await call('/dsh-stock/api/v1/data-sources', { method: 'POST', body: { provider: 'nope' } });
+assert.equal(badSwitch.status, 400, '非法数据源应 400');
+assert.equal(badSwitch.json.ok, false);
+console.log('  ✓ 非法数据源返回 400');
+
+let switchedProvider = null;
+try {
+const toTencent = await call('/dsh-stock/api/v1/data-sources', { method: 'POST', body: { provider: 'tencent' } });
+assert.equal(toTencent.status, 200);
+assert.equal(toTencent.json.data.preferred, 'tencent');
+const dashTencent = await call('/dsh-stock/api/v1/dashboard', { url: '/dsh-stock/api/v1/dashboard?force=1' });
+assert.equal(dashTencent.status, 200);
+assert.ok(dashTencent.json.data.rows.length > 1000, '腾讯源行数异常：' + dashTencent.json.data.rows.length);
+assert.ok(['tencent', 'eastmoney', 'sina'].includes(dashTencent.json.data.meta.provider), 'meta.provider 异常');
+assert.ok(Array.isArray(dashTencent.json.data.meta.providerMissingFields), '缺 providerMissingFields');
+console.log('  ✓ 切到腾讯源：rows=' + dashTencent.json.data.rows.length + '（meta.provider=' + dashTencent.json.data.meta.provider + '，缺失字段 ' + dashTencent.json.data.meta.providerMissingFields.length + ' 个）');
+const cmbTencent = dashTencent.json.data.rows.find((row) => row.code === '600036');
+assert.ok(cmbTencent && typeof cmbTencent.price === 'number' && cmbTencent.price > 0, '腾讯源招商银行价格异常');
+assert.equal(cmbTencent.name, '招商银行');
+
+} finally {
+  // 无论断言是否失败，都把数据源还原，避免污染后续本地状态
+  const back = await call('/dsh-stock/api/v1/data-sources', { method: 'POST', body: { provider: originalProvider } });
+  assert.equal(back.status, 200);
+  assert.equal(back.json.data.preferred, originalProvider);
+  const dashBack = await call('/dsh-stock/api/v1/dashboard', { url: '/dsh-stock/api/v1/dashboard?force=1' });
+  assert.equal(dashBack.status, 200);
+  assert.ok(dashBack.json.data.rows.length > 1000);
+  console.log('  ✓ 切回 ' + originalProvider + '：rows=' + dashBack.json.data.rows.length);
+}
 
 // 卸载：effect 的 disposer 应移除路由
 for (const dispose of disposers) dispose();

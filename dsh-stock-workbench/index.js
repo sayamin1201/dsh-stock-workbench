@@ -119,6 +119,51 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+/** 读取 JSON 请求体（限制 16KB，避免被打） */
+function readJsonBody(request, limit = 16 * 1024) {
+  return new Promise((resolve, reject) => {
+   // 兼容两种请求体来源：真实 http.IncomingMessage（EventEmitter）与测试桩（async iterator）
+    if (typeof request.on !== 'function' && typeof request[Symbol.asyncIterator] === 'function') {
+      (async () => {
+        let total = 0;
+        const buffers = [];
+        for await (const chunk of request) {
+          total += chunk.length;
+          if (total > limit) return reject(new Error('请求体过大'));
+          buffers.push(Buffer.from(chunk));
+        }
+        const text = Buffer.concat(buffers).toString('utf8');
+        try {
+          resolve(text ? JSON.parse(text) : {});
+        } catch {
+          reject(new Error('请求体不是合法 JSON'));
+        }
+      })().catch(reject);
+      return;
+    }
+    let size = 0;
+    const chunks = [];
+    request.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new Error('请求体过大'));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on('end', () => {
+      if (!chunks.length) return resolve({});
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        reject(new Error('请求体不是合法 JSON'));
+      }
+    });
+    request.on('error', reject);
+  });
+}
+
 function methodNotAllowed(response, allow) {
   response.writeHead(405, { allow, 'cache-control': 'no-store' });
   response.end();
@@ -139,6 +184,8 @@ export function apply(ctx, config = {}) {
   ctx.inject(['webServer'], (hostCtx) => {
     hostCtx.effect(() => {
       const disposers = [];
+  /** 重载时依次执行的缓存清理器（各数据源自报） */
+  const cacheResetters = [];
 
       disposers.push(
         hostCtx.webServer.register({
@@ -146,7 +193,92 @@ export function apply(ctx, config = {}) {
           path: `${API_BASE}/health`,
           handler: (request, response) => {
             if (request.method !== 'GET') return methodNotAllowed(response, 'GET');
-            sendJson(response, 200, { ok: true, service: name, api: 1 });
+            const sources = service.getDataSources();
+            sendJson(response, 200, {
+              ok: true,
+              service: name,
+              api: 1,
+              dataSource: sources.preferred,
+              providers: sources.providers.map((item) => item.id),
+            });
+          },
+        }),
+      );
+
+      // 重载：清空全部缓存后立刻重新请求（清理内存 + 磁盘快照，保证走真实接口）
+      disposers.push(
+        hostCtx.webServer.register({
+          kind: 'exact',
+          path: `${API_BASE}/reload`,
+          handler: async (request, response) => {
+            if (request.method !== 'POST' && request.method !== 'GET') return methodNotAllowed(response, 'POST, GET');
+            const t0 = Date.now();
+            try {
+              const cleared = [];
+              // 1) 服务层（快照 / 代码全集 / 上一次成功数据 / 分红）
+              try {
+                cleared.push(...service.clearCaches());
+              } catch (error) {
+                cleared.push('market:' + (error instanceof Error ? error.message : String(error)));
+              }
+              // 2) 其他数据源（板块 / 成分股 / 单股估值 / 批量估值分位）
+              for (const reset of cacheResetters) {
+                try {
+                  const names = reset();
+                  if (Array.isArray(names)) cleared.push(...names);
+                } catch (error) {
+                  cleared.push('reset-error:' + (error instanceof Error ? error.message : String(error)));
+                }
+              }
+              // 3) 立刻重新走一遍完整请求链路
+              const result = await service.reload();
+              sendJson(response, 200, {
+                ok: true,
+                data: {
+                  cleared: [...new Set(cleared)],
+                  ms: result.ms,
+                  totalMs: Date.now() - t0,
+                  rows: result.rows,
+                  meta: result.meta,
+                },
+              });
+            } catch (error) {
+              sendJson(response, 502, {
+                ok: false,
+                error: error instanceof Error ? error.message : String(error),
+                data: { cleared: [...new Set(cleared)] },
+              });
+            }
+          },
+        }),
+      );
+
+      // 行情数据源：查看 / 切换（东财 / 腾讯 / 新浪，失败自动回退）
+      disposers.push(
+        hostCtx.webServer.register({
+          kind: 'exact',
+          path: `${API_BASE}/data-sources`,
+          handler: async (request, response) => {
+            try {
+              if (request.method === 'GET') {
+                return sendJson(response, 200, { ok: true, data: service.getDataSources() });
+              }
+              if (request.method === 'POST') {
+                const body = await readJsonBody(request).catch((error) => ({ error: error.message }));
+                if (body && body.error) return sendJson(response, 400, { ok: false, error: body.error });
+                const next = String(body?.provider ?? '').trim();
+                if (!next) return sendJson(response, 400, { ok: false, error: '缺少 provider' });
+                try {
+                  const data = service.setPreferredProvider(next);
+                  return sendJson(response, 200, { ok: true, data });
+                } catch (error) {
+                  return sendJson(response, 400, { ok: false, error: error.message });
+                }
+              }
+              return methodNotAllowed(response, 'GET, POST');
+            } catch (error) {
+              return sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+            }
           },
         }),
       );
@@ -412,6 +544,7 @@ export function apply(ctx, config = {}) {
 
       // 板块资金流（概念 / 行业 / 地域）
       const boardSource = createBoardSource();
+      cacheResetters.push(() => boardSource.clear());
       disposers.push(
         hostCtx.webServer.register({
           kind: 'exact',
@@ -437,6 +570,7 @@ export function apply(ctx, config = {}) {
 
       // 估值分位（PE/PB 近 5 年百分位）
       const valuationSource = createValuationSource();
+      cacheResetters.push(() => valuationSource.clear());
       disposers.push(
         hostCtx.webServer.register({
           kind: 'exact',
@@ -462,6 +596,7 @@ export function apply(ctx, config = {}) {
 
       // 板块成分股（点击板块 → 按成员代码筛选）
       const boardMemberSource = createBoardMemberSource();
+      cacheResetters.push(() => boardMemberSource.clear());
       disposers.push(
         hostCtx.webServer.register({
           kind: 'exact',
@@ -487,6 +622,7 @@ export function apply(ctx, config = {}) {
 
       // 全市场估值分位（批量、抽样；用于榜单「PE/PB 分位」列）
       const bulkValuationSource = createBulkValuationSource();
+      cacheResetters.push(() => bulkValuationSource.clear());
       disposers.push(
         hostCtx.webServer.register({
           kind: 'exact',

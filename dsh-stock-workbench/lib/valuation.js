@@ -111,5 +111,11 @@ export function createValuationSource({ ttlMs = CACHE_MS } = {}) {
       inflight.set(key, promise);
       return promise;
     },
+    /** 重载用：清空单股估值分位缓存 */
+    clear() {
+      cache.clear();
+      inflight.clear();
+      return ['valuation'];
+    },
   };
 }

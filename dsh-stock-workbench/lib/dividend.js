@@ -243,5 +243,11 @@ export function createDividendSource({ ttlMs = CACHE_MS } = {}) {
         });
       return inflight;
     },
+    /** 重载用：丢掉内存/磁盘缓存，下次 get() 直接从接口重新拉 */
+    clear() {
+      cache = null;
+      diskLoaded = true; // 不再读磁盘快照
+      return ['dividend'];
+    },
   };
 }
