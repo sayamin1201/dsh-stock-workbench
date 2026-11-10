@@ -414,9 +414,9 @@ export async function fetchTrends(secid, { ndays = 1 } = {}) {
 }
 
 /** 单只日K/分钟K */
-export async function fetchKline(secid, { klt = 101, fqt = 1, lmt = 120 } = {}) {
+export async function fetchKline(secid, { klt = 101, fqt = 1, lmt = 120, end = '20500101' } = {}) {
   const json = await getJson(
-    `${PUSH2HIS_URL}/stock/kline/get?secid=${secid}&klt=${klt}&fqt=${fqt}&lmt=${lmt}&end=20500101`
+    `${PUSH2HIS_URL}/stock/kline/get?secid=${secid}&klt=${klt}&fqt=${fqt}&lmt=${lmt}&end=${end}`
       + '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61',
   );
   const klines = json.data?.klines ?? [];

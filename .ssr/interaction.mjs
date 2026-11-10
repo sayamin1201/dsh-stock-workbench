@@ -571,6 +571,39 @@ await act(async () => {
 });
 const detailButton = detailTree.root.findAll((node) => typeof node.type === 'string'
   && typeof node.props.onClick === 'function' && node.props.title === 'detailHint')[0];
+// --- 详情页回测入口：点「回测」打开面板，关闭后恢复
+const backtestBtn = detailTree.root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function'
+  && node.props.title === 'btHint')[0];
+check('详情页有「回测」按钮', () => assert(backtestBtn, '找不到回测按钮'));
+await act(async () => { backtestBtn.props.onClick(); });
+check('点击后打开回测面板（含运行按钮）', () => {
+  const markup = JSON.stringify(detailTree.toJSON() ?? '');
+  assert(markup.includes('btRun'), '没有开始回测按钮');
+  assert(markup.includes('backtestTitle'), '没有回测面板标题');
+});
+// 切到「买入表达式」应出现可视化构造按钮
+const btRuleSelect = detailTree.root.findAll((node) => node.type === 'select')[0];
+await act(async () => { btRuleSelect.props.onChange({ target: { value: 'expr' } }); });
+check('回测面板：买入表达式支持可视化构造', () => {
+  const markup = JSON.stringify(detailTree.toJSON() ?? '');
+  assert(markup.includes('formulaBuilder'), '没有可视化构造入口');
+});
+check('回测面板：卖出方式默认止盈止损', () => {
+  const selects = detailTree.root.findAll((node) => node.type === 'select');
+  assert(selects.some((node) => node.props.value === 'stops'), '卖出方式默认值不是 stops');
+});
+
+const btClose = detailTree.root.findAll((node) => typeof node.type === 'string'
+  && typeof node.props.onClick === 'function'
+  && String(node.props.className ?? '').includes('sw-btnGhost')
+  && textOf(node) === '×')[0];
+await act(async () => { btClose.props.onClick(); });
+check('关闭回测面板', () => {
+  const markup = JSON.stringify(detailTree.toJSON() ?? '');
+  assert(!markup.includes('backtestTitle'), '面板未关闭');
+});
+
 check('详情页有「详情」按钮', () => assert(detailButton, '找不到详情按钮'));
 await act(async () => {
   detailButton.props.onClick({ stopPropagation() {} });

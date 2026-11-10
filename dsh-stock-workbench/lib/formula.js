@@ -48,6 +48,36 @@ const FIELD_DEFS = [
   { key: 'revenueYoy', label: '营收同比', aliases: ['营收同比', '营业收入同比', 'revenueyoy'], money: false },
   { key: 'profitYoy', label: '净利同比', aliases: ['净利同比', '净利润同比', 'profityoy'], money: false },
   { key: 'industry', label: '行业', aliases: ['行业', 'industry'], text: true },
+  { key: 'open', label: '开盘价', aliases: ['open', '开盘'], money: false, barOnly: true },
+  { key: 'high', label: '最高价', aliases: ['high', '最高'], money: false, barOnly: true },
+  { key: 'low', label: '最低价', aliases: ['low', '最低'], money: false, barOnly: true },
+  { key: 'close', label: '收盘价', aliases: ['close', '收盘'], money: false, barOnly: true },
+  { key: 'volume', label: '成交量(手)', aliases: ['volume', '成交量'], money: false, barOnly: true },
+  { key: 'ma5', label: 'MA5', aliases: ['ma5'], money: false, barOnly: true },
+  { key: 'ma10', label: 'MA10', aliases: ['ma10'], money: false, barOnly: true },
+  { key: 'ma20', label: 'MA20', aliases: ['ma20'], money: false, barOnly: true },
+  { key: 'ma60', label: 'MA60', aliases: ['ma60'], money: false, barOnly: true },
+  { key: 'ma120', label: 'MA120', aliases: ['ma120'], money: false, barOnly: true },
+  { key: 'ma250', label: 'MA250', aliases: ['ma250'], money: false, barOnly: true },
+  { key: 'ema12', label: 'EMA12', aliases: ['ema12'], money: false, barOnly: true },
+  { key: 'ema26', label: 'EMA26', aliases: ['ema26'], money: false, barOnly: true },
+  { key: 'macd_dif', label: 'MACD DIF', aliases: ['macd_dif', 'dif'], money: false, barOnly: true },
+  { key: 'macd_dea', label: 'MACD DEA', aliases: ['macd_dea', 'dea'], money: false, barOnly: true },
+  { key: 'macd_hist', label: 'MACD 柱', aliases: ['macd_hist', 'macd柱'], money: false, barOnly: true },
+  { key: 'rsi6', label: 'RSI6', aliases: ['rsi6'], money: false, barOnly: true },
+  { key: 'rsi12', label: 'RSI12', aliases: ['rsi12'], money: false, barOnly: true },
+  { key: 'rsi24', label: 'RSI24', aliases: ['rsi24'], money: false, barOnly: true },
+  { key: 'kdj_k', label: 'KDJ K', aliases: ['kdj_k', 'k值'], money: false, barOnly: true },
+  { key: 'kdj_d', label: 'KDJ D', aliases: ['kdj_d', 'd值'], money: false, barOnly: true },
+  { key: 'kdj_j', label: 'KDJ J', aliases: ['kdj_j', 'j值'], money: false, barOnly: true },
+  { key: 'boll_upper', label: 'BOLL上轨', aliases: ['boll_upper', '布林上轨'], money: false, barOnly: true },
+  { key: 'boll_mid', label: 'BOLL中轨', aliases: ['boll_mid', '布林中轨'], money: false, barOnly: true },
+  { key: 'boll_lower', label: 'BOLL下轨', aliases: ['boll_lower', '布林下轨'], money: false, barOnly: true },
+  { key: 'atr14', label: 'ATR14', aliases: ['atr14', 'atr'], money: false, barOnly: true },
+  { key: 'pe_pct', label: 'PE分位', aliases: ['pe_pct', 'pe分位'], money: false, barOnly: true },
+  { key: 'pb_pct', label: 'PB分位', aliases: ['pb_pct', 'pb分位'], money: false, barOnly: true },
+  { key: 'hold_days', label: '持有天数', aliases: ['hold_days', '持有天数'], money: false, barOnly: true },
+  { key: 'pnl_pct', label: '持仓盈亏%', aliases: ['pnl_pct', '盈亏比例'], money: false, barOnly: true },
 ];
 
 const ALIAS_INDEX = new Map();
@@ -59,8 +89,17 @@ for (const field of FIELD_DEFS) {
 }
 
 /** 给前端展示的字段目录 */
+/** 回测专用 bar 字段目录（表达式编辑器用） */
+export function getBarFieldCatalog() {
+  return FIELD_DEFS.filter((field) => field.barOnly === true).map((field) => ({
+    key: field.key,
+    label: field.label,
+    aliases: field.aliases,
+  }));
+}
+
 export function getFieldCatalog() {
-  return FIELD_DEFS.map((field) => ({
+  return FIELD_DEFS.filter((field) => field.barOnly !== true).map((field) => ({
     key: field.key,
     label: field.label,
     aliases: field.aliases,
@@ -447,8 +486,17 @@ class Parser {
       throw formulaError(`字段「${fieldToken.value}」后面缺少比较符（> >= < <= = != between）`, nextToken.position);
     }
     this.next();
+    const opValue = nextToken.value === '=' ? '==' : nextToken.value;
+    // 支持字段与字段比较（如 close > ma20 / macd_dif > macd_dea）
+    const rightToken = this.peek();
+    if (rightToken && rightToken.type === 'ident') {
+      const other = resolveField(rightToken.value, rightToken.position);
+      if (other.text) throw formulaError('数值比较右侧不能是文本字段', rightToken.position);
+      this.next();
+      return { kind: 'compareField', field: field.key, op: opValue, otherField: other.key };
+    }
     const value = this.takeNumber(field, '比较符后面的数字');
-    return { kind: 'compare', field: field.key, op: nextToken.value === '=' ? '==' : nextToken.value, value };
+    return { kind: 'compare', field: field.key, op: opValue, value };
   }
 }
 
@@ -473,6 +521,13 @@ function evaluateNode(node, row) {
     case 'and': return evaluateNode(node.left, row) && evaluateNode(node.right, row);
     case 'or': return evaluateNode(node.left, row) || evaluateNode(node.right, row);
     case 'not': return !evaluateNode(node.node, row);
+    case 'compareField': {
+      const leftValue = row[node.field];
+      const rightValue = row[node.otherField];
+      if (typeof leftValue !== 'number' || !Number.isFinite(leftValue)) return false;
+      if (typeof rightValue !== 'number' || !Number.isFinite(rightValue)) return false;
+      return compare(node.op, leftValue, rightValue);
+    }
     case 'compare': {
       const value = row[node.field];
       if (typeof value !== 'number' || !Number.isFinite(value)) return false;

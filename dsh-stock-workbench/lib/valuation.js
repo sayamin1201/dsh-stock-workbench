@@ -93,6 +93,41 @@ export async function fetchValuation(code, { years = DEFAULT_YEARS, now = Date.n
   };
 }
 
+/**
+ * 逐日估值序列（回测用）：升序 [{date, pe, pb}]，只保留正数 PE/PB。
+ * @param {string} code
+ * @param {{years?: number, now?: number}} [options]
+ */
+export async function fetchValuationSeries(code, { years = 10, now = Date.now() } = {}) {
+  const first = await getJson(buildUrl({ code, page: 1 }));
+  const pages = Math.min(12, Math.max(1, Number(first?.result?.pages) || 1));
+  const raw = [...(first?.result?.data ?? [])];
+  const rest = [];
+  for (let page = 2; page <= pages; page += 1) rest.push(page);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, rest.length) }, async () => {
+    while (cursor < rest.length) {
+      const page = rest[cursor];
+      cursor += 1;
+      try {
+        const json = await getJson(buildUrl({ code, page }));
+        if (Array.isArray(json?.result?.data)) raw.push(...json.result.data);
+      } catch {
+        /* 少一页不影响主流程 */
+      }
+    }
+  }));
+  const from = now - years * 365 * 24 * 3600 * 1000;
+  return raw
+    .map((item) => ({
+      date: String(item.TRADE_DATE ?? '').slice(0, 10),
+      pe: Number(item.PE_TTM),
+      pb: Number(item.PB_MRQ),
+    }))
+    .filter((item) => item.date && Date.parse(`${item.date}T00:00:00Z`) >= from)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
 export function createValuationSource({ ttlMs = CACHE_MS } = {}) {
   const cache = new Map();
   const inflight = new Map();

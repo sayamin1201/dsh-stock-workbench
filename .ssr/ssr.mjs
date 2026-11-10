@@ -643,6 +643,21 @@ check('详情页图表用真实日K 渲染，不再是空态', () => {
   assert(rects >= visible * 2 - 2, `柱体 ${rects} 少于可见 ${visible} 根应画出的数量`);
 });
 
+check('回测面板 SSR：规则/年限/资金/执行方式 + 运行按钮 + 免责声明', () => {
+  const label = (key) => (dicts.zh ?? {})[key] ?? key;
+  const markup = renderToStaticMarkup(h(internals.BacktestPanel, {
+    t: label,
+    row: { code: '600036', name: '招商银行', price: 42, pct: 1 },
+    onClose: () => {},
+  }));
+  for (const text of ['单股回测', '规则类型', '技术信号', '回测年限', '初始资金', '成交假设', '开始回测', '历史回测不代表未来', '卖出方式', '止盈止损（默认）', '均线金叉', 'MACD 金叉', '20 日新高', '放量上攻', '多头排列', '站上 60 日线']) {
+    assert(markup.includes(text), '回测面板缺少 ' + text);
+  }
+  assert(markup.includes('sw-btPanel'), '缺少回测面板样式类');
+  assert(markup.includes('sw-drawerMask'), '回测面板应为右侧抽屉');
+  assert(markup.includes('sw-drawer sw-btPanel'), '缺少抽屉样式类');
+});
+
 check('详情页：头部指标行移除，成交量/市盈率改到详情弹窗；数据来源跟随行情源', () => {
   // 生产环境的 t 支持 'stat.volume' 这类点号路径，这里还原同样语义
   const label = (key) => (dicts.zh ?? {})[key] ?? key; // 字典已是扁平 key（stat.volume 可直接查）

@@ -396,6 +396,37 @@ export function createMarketService({ ttlMs = 3000, universeTtlMs = 6 * 3600 * 1
       return value;
     },
 
+    /**
+     * 单只日线历史（回测用）：按 `end` 翻页回溯，最多取 years 年，去重后升序返回。
+     */
+    async getKlineHistory(secid, { years = 10, klt = 101, pageBars = 640 } = {}) {
+      const target = Math.max(250, Math.ceil(years * 250));
+      const byDate = new Map();
+      let end = '';
+      for (let page = 0; page < 40 && byDate.size < target; page += 1) {
+        const { value } = await router.kline(secid, {
+          klt,
+          fqt: 1,
+          lmt: pageBars,
+          ...(end ? { end } : {}),
+        });
+        const bars = value?.bars ?? [];
+        if (!bars.length) break;
+        let added = 0;
+        for (const bar of bars) {
+          if (!byDate.has(bar.d)) {
+            byDate.set(bar.d, bar);
+            added += 1;
+          }
+        }
+        const earliest = bars[0].d;
+        if (!added || end === earliest) break;
+        end = earliest.replace(/-/g, '');
+      }
+      const bars = [...byDate.values()].sort((a, b) => (a.d < b.d ? -1 : 1));
+      return { name: null, bars };
+    },
+
     /** 单只日K/分钟K（v2 技术指标用） */
     async getKline(secid, { klt = 101, fqt = 1, lmt = 120 } = {}) {
       const { value } = await router.kline(secid, { klt, fqt, lmt });

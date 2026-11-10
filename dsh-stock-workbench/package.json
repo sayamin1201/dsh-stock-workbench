@@ -1,6 +1,6 @@
 {
   "name": "dsh-stock-workbench",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "type": "module",
   "description": "看股工作台：全 A 股今日快照、多指标排序与条件选股。A-share market workbench: today's full-market snapshot with multi-metric ranking and screening.",
   "icon": "icon.svg",

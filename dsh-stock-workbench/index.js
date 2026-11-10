@@ -15,6 +15,9 @@ import { compileFormula, getFieldCatalog, getFormulaPresets, FORMULA_EXAMPLES } 
 import { createBoardSource, createBoardMemberSource } from './lib/boards.js';
 import { createValuationSource } from './lib/valuation.js';
 import { createBulkValuationSource } from './lib/valuation-bulk.js';
+import { fetchValuationSeries } from './lib/valuation.js';
+import { runBacktest, DEFAULT_COST, RULE_PRESETS, EXEC_MODES } from './lib/backtest.js';
+import { getBarFieldCatalog } from './lib/formula.js';
 
 export const name = 'dsh-stock-workbench';
 
@@ -248,6 +251,109 @@ export function apply(ctx, config = {}) {
                 error: error instanceof Error ? error.message : String(error),
                 data: { cleared: [...new Set(cleared)] },
               });
+            }
+          },
+        }),
+      );
+
+      // 回测：预置规则 + 可选参数
+      disposers.push(
+        hostCtx.webServer.register({
+          kind: 'exact',
+          path: `${API_BASE}/backtest/presets`,
+          handler: async (request, response) => {
+            if (request.method !== 'GET') return methodNotAllowed(response, 'GET');
+            sendJson(response, 200, {
+              ok: true,
+              data: {
+                rules: Object.entries(RULE_PRESETS).map(([id, preset]) => ({
+                  id,
+                  label: preset.label,
+                  desc: preset.desc,
+                  params: preset.params,
+                  hasSell: true,
+                })),
+                execModes: Object.entries(EXEC_MODES).map(([id, label]) => ({ id, label })),
+                defaultCost: DEFAULT_COST,
+                barFields: getBarFieldCatalog(),
+              },
+            });
+          },
+        }),
+      );
+
+      // 回测：单股日线（事件驱动，默认 T+1 开盘成交）
+      disposers.push(
+        hostCtx.webServer.register({
+          kind: 'exact',
+          path: `${API_BASE}/backtest`,
+          handler: async (request, response) => {
+            if (request.method !== 'POST' && request.method !== 'GET') return methodNotAllowed(response, 'POST, GET');
+            try {
+              const body = request.method === 'POST'
+                ? await readJsonBody(request, 32 * 1024).catch((error) => ({ __error: error.message }))
+                : Object.fromEntries(new URL(request.url ?? '/', 'http://localhost').searchParams);
+              if (body && body.__error) return sendJson(response, 400, { ok: false, error: body.__error });
+
+              const code = String(body.code ?? '').trim();
+              if (!/^\d{6}$/.test(code)) return sendJson(response, 400, { ok: false, error: 'code 必须是 6 位股票代码' });
+
+              const yearsRaw = Number(body.years ?? 10);
+              const years = Number.isFinite(yearsRaw) ? Math.min(15, Math.max(1, Math.round(yearsRaw))) : 10;
+              const capitalRaw = Number(body.capital ?? 100000);
+              const capital = Number.isFinite(capitalRaw) && capitalRaw >= 1000 ? capitalRaw : 100000;
+              const exec = body.exec === 'close' ? 'close' : 'nextOpen';
+
+              let buy = body.buy;
+              let sell = body.sell;
+              if (typeof buy === 'string') buy = { type: 'expr', expr: buy };
+              if (typeof sell === 'string') sell = { type: 'expr', expr: sell };
+              if (!buy) buy = { type: 'signal', id: 'macd_golden' };
+              if (!sell) sell = { ...buy };
+
+              const numberOrNull = (value) => {
+                const n = Number(value);
+                return value === undefined || value === null || value === '' || !Number.isFinite(n) ? null : n;
+              };
+
+              const { universe } = await service.getUniverse();
+              const target = universe.find((item) => item.code === code);
+              if (!target) return sendJson(response, 404, { ok: false, error: `未找到股票 ${code}` });
+
+              const [history, valuationRows] = await Promise.all([
+                service.getKlineHistory(target.secid, { years }),
+                fetchValuationSeries(code, { years }).catch(() => []),
+              ]);
+
+              const result = runBacktest({
+                bars: history.bars,
+                valuationRows,
+                buy,
+                sell,
+                capital,
+                cost: body.cost && typeof body.cost === 'object' ? body.cost : {},
+                exec,
+                stopLossPct: numberOrNull(body.stopLossPct),
+                takeProfitPct: numberOrNull(body.takeProfitPct),
+                maxHoldDays: numberOrNull(body.maxHoldDays),
+              });
+
+              sendJson(response, 200, {
+                ok: true,
+                data: {
+                  ...result,
+                  meta: {
+                    ...result.meta,
+                    code,
+                    name: target.name,
+                    secid: target.secid,
+                    years,
+                    valuationRows: valuationRows.length,
+                  },
+                },
+              });
+            } catch (error) {
+              sendJson(response, 400, { ok: false, error: error instanceof Error ? error.message : String(error) });
             }
           },
         }),

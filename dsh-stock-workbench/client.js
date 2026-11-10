@@ -934,6 +934,51 @@ window.__ModuleLoader__.load({
       dividendStreakMax: '10+',
       close: '关闭',
       detailBtn: '详情',
+      backtest: '回测',
+      backtestTitle: '单股回测',
+      btHint: '用技术信号/公式验证历史买卖收益（默认 T+1 开盘成交）',
+      btRuleType: '规则类型',
+      btSignal: '技术信号',
+      btExpr: '买入表达式',
+      btExprHint: '可用字段：close / ma5 / ma20 / macd_dif / macd_dea / rsi6 / kdj_k / boll_upper / atr14 / pe / pb / pe_pct / pb_pct，支持 and / or / not 与字段比较',
+      btYears: '回测年限',
+      btYearsUnit: '年',
+      btCapital: '初始资金',
+      btExec: '成交假设',
+      btStopLoss: '止损 %',
+      btTakeProfit: '止盈 %',
+      btMaxHold: '最长持有(天)',
+      btRun: '开始回测',
+      btRunning: '回测中…',
+      btTotalReturn: '总收益',
+      btAnnualized: '年化',
+      btMaxDD: '最大回撤',
+      btSharpe: '夏普',
+      btWinRate: '胜率',
+      btTrades: '交易次数',
+      btAvgHold: '平均持有',
+      btBuyHold: '买入持有',
+      btDaysUnit: '天',
+      btBuyDate: '买入日',
+      btBuyPrice: '买入价',
+      btSellDate: '卖出日',
+      btSellPrice: '卖出价',
+      btQty: '数量',
+      btHoldDays: '持有天数',
+      btPnl: '盈亏',
+      btTradeList: '成交明细',
+      btNoTrades: '回测期内没有产生交易（可放宽买入条件或延长年限）',
+      btSellMode: '卖出方式',
+      btSellStops: '止盈止损（默认）',
+      btSellSignal: '卖出信号',
+      btSellExpr: '卖出表达式',
+      btSellStopsHint: '仅用止盈止损：不设卖出信号，仓位由止损/止盈/最长持有或回测结束平仓',
+      btBuilderPreviewEmpty: '添加条件后这里显示表达式预览',
+      btTradesHint: '查看逐笔买卖记录',
+      btTradesUnit: '笔',
+      btTradesCostNote: '价格已含滑点；盈亏已扣佣金/印花税/过户费',
+      btReason: '原因',
+      btDisclaimer: '历史回测不代表未来收益；默认 T+1 开盘成交，含佣金/印花税/滑点',
       detailTitle: '个股详情',
       detailHint: '查看该股全部指标与估值分位',
       detailTrade: '交易数据',
@@ -1222,6 +1267,51 @@ window.__ModuleLoader__.load({
       dividendStreakMax: '10+',
       close: 'Close',
       detailBtn: 'Details',
+      backtest: 'Backtest',
+      backtestTitle: 'Single-stock backtest',
+      btHint: 'Validate historical buy/sell returns with signals or formulas (T+1 open by default)',
+      btRuleType: 'Rule type',
+      btSignal: 'Signal',
+      btExpr: 'Buy expression',
+      btExprHint: 'Fields: close / ma5 / ma20 / macd_dif / macd_dea / rsi6 / kdj_k / boll_upper / atr14 / pe / pb / pe_pct / pb_pct (and / or / not, field comparisons)',
+      btYears: 'Years',
+      btYearsUnit: 'y',
+      btCapital: 'Capital',
+      btExec: 'Execution',
+      btStopLoss: 'Stop loss %',
+      btTakeProfit: 'Take profit %',
+      btMaxHold: 'Max hold days',
+      btRun: 'Run backtest',
+      btRunning: 'Running…',
+      btTotalReturn: 'Total return',
+      btAnnualized: 'Annualized',
+      btMaxDD: 'Max drawdown',
+      btSharpe: 'Sharpe',
+      btWinRate: 'Win rate',
+      btTrades: 'Trades',
+      btAvgHold: 'Avg hold',
+      btBuyHold: 'Buy & hold',
+      btDaysUnit: 'd',
+      btBuyDate: 'Buy date',
+      btBuyPrice: 'Buy price',
+      btSellDate: 'Sell date',
+      btSellPrice: 'Sell price',
+      btQty: 'Qty',
+      btHoldDays: 'Days',
+      btPnl: 'P&L',
+      btTradeList: 'Trades',
+      btNoTrades: 'No trades in the period',
+      btSellMode: 'Sell rule',
+      btSellStops: 'Stop loss / take profit (default)',
+      btSellSignal: 'Sell signal',
+      btSellExpr: 'Sell expression',
+      btSellStopsHint: 'Stops only: no sell signal; exits use stop loss / take profit / max hold / period end',
+      btBuilderPreviewEmpty: 'Expression preview appears here',
+      btTradesHint: 'View trade-by-trade records',
+      btTradesUnit: 'trades',
+      btTradesCostNote: 'Prices include slippage; P&L is net of commission/stamp duty/transfer fee',
+      btReason: 'Reason',
+      btDisclaimer: 'Past backtests do not guarantee future returns; T+1 open, fees & slippage included',
       detailTitle: 'Stock details',
       detailHint: 'All metrics plus valuation percentile',
       detailTrade: 'Trading',
@@ -1418,6 +1508,40 @@ window.__ModuleLoader__.load({
 .sw-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px}
 .sw-meta b{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600;font-variant-numeric:tabular-nums}
 .sw-metaWarn{color:var(--dsw-alias-label-warning,#b45309);margin-left:4px}
+.sw-drawerMask{position:absolute;inset:0;z-index:8;background:rgba(15,17,21,.32);display:flex;justify-content:flex-end}
+.sw-drawer{height:100%;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);
+  border-left:.5px solid var(--dsw-alias-border-l2,#e5e7eb);box-shadow:-16px 0 40px rgba(0,0,0,.18);
+  animation:swDrawerIn .18s ease-out}
+@keyframes swDrawerIn{from{transform:translateX(28px);opacity:.6}to{transform:none;opacity:1}}
+.sw-btPanel{width:min(560px,96%);max-height:none;height:100%;border-radius:0;overflow:visible}
+.sw-btForm{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}
+.sw-btField{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--dsw-alias-label-secondary,#6b7280)}
+.sw-btHint{font-size:11.5px;color:var(--dsw-alias-label-tertiary,#9aa3b2);margin-top:6px}
+.sw-btExprCol{display:flex;flex-direction:column;gap:6px}
+.sw-btBuilder{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+.sw-btBuilderHint{font-size:11px;color:var(--dsw-alias-label-tertiary,#9aa3b2)}
+.sw-btBuilderModal{width:min(720px,94%)}
+.sw-btBuilderModal .sw-builderRow{gap:8px}
+.sw-btActions{display:flex;align-items:center;gap:10px;margin:10px 0}
+.sw-btError{color:var(--dsw-alias-state-error-primary,#dc2626);font-size:12px}
+.sw-btMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sw-btMetric{display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:8px;
+  background:var(--dsw-alias-bg-layer-2,#f7f8fa);font-size:11.5px;color:var(--dsw-alias-label-secondary,#6b7280)}
+.sw-btMetric b{font-size:15px;color:var(--dsw-alias-label-primary,#1f2328);font-variant-numeric:tabular-nums}
+.sw-btCurve{margin-top:10px;height:90px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,#f7f8fa);padding:4px}
+.sw-btSpark{width:100%;height:100%}
+.sw-btWarnings{margin-top:10px;display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--dsw-alias-label-warning,#b45309)}
+.sw-btTrades{margin-top:6px;max-height:260px;overflow:auto;border:.5px solid var(--dsw-alias-border-l1,#e5e7eb);border-radius:8px}
+.sw-btSectionTitle{font-size:12.5px;font-weight:650;color:var(--dsw-alias-label-primary,#1f2328);margin-top:10px}
+.sw-btEmpty{font-size:12px;color:var(--dsw-alias-label-tertiary,#9aa3b2);padding:8px 2px}
+.sw-modalMaskTop{z-index:12}
+.sw-btTradesModal{width:min(880px,94%)}
+.sw-btTradesModal .sw-btTrades{margin-top:0;max-height:none;border:none}
+.sw-btTrades table{width:100%;border-collapse:collapse;font-size:11.5px}
+.sw-btTrades th,.sw-btTrades td{padding:6px 8px;text-align:right;white-space:nowrap}
+.sw-btTrades th{position:sticky;top:0;background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-secondary,#6b7280)}
+.sw-btTrades tbody tr:nth-child(even){background:var(--dsw-alias-bg-layer-2,#f7f8fa)}
+.sw-btFootNote{font-size:11px;color:var(--dsw-alias-label-tertiary,#9aa3b2);margin-right:auto}
 .sw-tabMenu{position:relative;display:inline-flex}
 .sw-tabMask{position:fixed;inset:0;z-index:14;background:transparent}
 .sw-tabButton::after{content:'▾';margin-left:6px;font-size:10px;opacity:.7}
@@ -1560,7 +1684,7 @@ window.__ModuleLoader__.load({
   color:var(--dsw-alias-brand-primary,#4f6ef7);text-decoration:underline dotted;text-underline-offset:2px;
   font-variant-numeric:tabular-nums}
 .sw-divLink:hover{text-decoration:underline}
-.sw-popMask{position:absolute;inset:0;z-index:9;background:rgba(15,17,21,.38);display:flex;
+.sw-popMask{position:absolute;inset:0;z-index:30;background:rgba(15,17,21,.38);display:flex;
   align-items:flex-start;justify-content:flex-end;padding:12px}
 .sw-pop{width:min(470px,96%);max-height:88%;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;
   background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2,#e5e7eb);
@@ -1634,6 +1758,7 @@ window.__ModuleLoader__.load({
   color:var(--dsw-alias-label-secondary,#6b7280);font-size:13px}
 .sw-rowPick{cursor:pointer}
 .sw-detailHead{flex:none;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sw-detailHead .sw-btn{flex:none}
 .sw-backBtn{font:inherit;font-size:12.5px;cursor:pointer;border-radius:8px;padding:5px 11px;display:inline-flex;
   align-items:center;gap:6px;border:.5px solid var(--dsw-alias-border-l2,#e5e7eb);
   background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#1f2328)}
@@ -4932,8 +5057,375 @@ window.__ModuleLoader__.load({
             kv(t('col.concepts'), row.concepts || '—'))))));
     }
 
+    /** 单股回测面板 */
+    function BacktestPanel({ t, row, onClose }) {
+      const [presets, setPresets] = React.useState(null);
+      const [form, setForm] = React.useState({
+        ruleType: 'signal',
+        signalId: 'macd_golden',
+        expr: 'close > ma20 and macd_dif > macd_dea',
+        years: '10',
+        capital: '100000',
+        exec: 'nextOpen',
+        stopLoss: '',
+        takeProfit: '',
+        maxHold: '',
+      });
+      const set = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
+
+      React.useEffect(() => {
+        let alive = true;
+        fetch(apiUrl('dsh-stock/api/v1/backtest/presets'), { headers: { accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((body) => {
+            if (alive && body && body.ok === true && body.data) setPresets(body.data);
+          })
+          .catch(() => {});
+        return () => {
+          alive = false;
+        };
+      }, []);
+
+      // 接口未返回时的兜底（保证下拉/构造器始终有选项）
+      const FALLBACK_RULES = [
+        { id: 'ma_golden', label: '均线金叉' },
+        { id: 'macd_golden', label: 'MACD 金叉' },
+        { id: 'breakout', label: '20 日新高' },
+        { id: 'volume_surge', label: '放量上攻' },
+        { id: 'ma_bull', label: '多头排列' },
+        { id: 'ma60_hold', label: '站上 60 日线' },
+      ];
+      const FALLBACK_FIELDS = [
+        { key: 'close', label: '收盘价' },
+        { key: 'ma5', label: 'MA5' },
+        { key: 'ma10', label: 'MA10' },
+        { key: 'ma20', label: 'MA20' },
+        { key: 'ma60', label: 'MA60' },
+        { key: 'macd_dif', label: 'MACD DIF' },
+        { key: 'macd_dea', label: 'MACD DEA' },
+        { key: 'rsi6', label: 'RSI6' },
+        { key: 'kdj_k', label: 'KDJ K' },
+        { key: 'boll_upper', label: 'BOLL上轨' },
+        { key: 'atr14', label: 'ATR14' },
+        { key: 'pe', label: 'PE' },
+        { key: 'pb', label: 'PB' },
+        { key: 'pe_pct', label: 'PE分位' },
+        { key: 'pb_pct', label: 'PB分位' },
+      ];
+
+      const [state, setState] = React.useState({ status: 'idle', error: '', result: null });
+      const [tradesOpen, setTradesOpen] = React.useState(false);
+      const [builderTarget, setBuilderTarget] = React.useState(null); // 'buy' | 'sell' | null
+      const [buyRows, setBuyRows] = React.useState([{ field: 'close', op: '>', value: '', connect: 'and' }]);
+      const [sellRows, setSellRows] = React.useState([{ field: 'close', op: '<', value: '', connect: 'and' }]);
+      // 卖出方式：默认「止盈止损」，也可选技术信号 / 公式表达式
+      const [sellMode, setSellMode] = React.useState('stops');
+      const [sellSignalId, setSellSignalId] = React.useState('ma_golden');
+      const [sellExpr, setSellExpr] = React.useState('close < ma20');
+
+      const ops = [
+        { value: '>', label: '>' },
+        { value: '>=', label: '≥' },
+        { value: '<', label: '<' },
+        { value: '<=', label: '≤' },
+        { value: '=', label: '=' },
+      ];
+      const barFields = (presets?.barFields?.length ? presets.barFields : FALLBACK_FIELDS);
+      const fieldLabel = (key) => barFields.find((field) => field.key === key)?.label ?? key;
+      const buildExpr = (rows) => rows
+        .filter((row) => String(row.value ?? '').trim() !== '')
+        .map((row, index) => {
+          const cond = `${row.field} ${row.op === '≥' ? '>=' : row.op === '≤' ? '<=' : row.op} ${row.value}`;
+          return index === 0 ? cond : `${row.connect} ${cond}`;
+        })
+        .join(' ');
+      const updateRow = (rows, setRows, index, patch) => {
+        setRows(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+      };
+      const builderRowsOf = (target) => (target === 'sell' ? sellRows : buyRows);
+      const builderSetRows = (target) => (target === 'sell' ? setSellRows : setBuyRows);
+      const builderApply = (target) => (expr) => {
+        if (target === 'sell') setSellExpr(expr);
+        else setForm((prev) => ({ ...prev, expr }));
+        setBuilderTarget(null);
+      };
+      const builderButton = (target) => h('button', {
+        type: 'button',
+        className: 'sw-btn sw-btnGhost',
+        onClick: () => setBuilderTarget(target),
+      }, `🧩 ${t('formulaBuilder')}`);
+
+      const renderBuilderModal = () => {
+        if (!builderTarget) return null;
+        const rows = builderRowsOf(builderTarget);
+        const setRows = builderSetRows(builderTarget);
+        const apply = builderApply(builderTarget);
+        return h('div', {
+          className: 'sw-modalMask sw-modalMaskTop',
+          onClick: (event) => {
+            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+            setBuilderTarget(null);
+          },
+        },
+        h('div', {
+          className: 'sw-modal sw-btBuilderModal',
+          role: 'dialog',
+          'aria-label': t('formulaBuilder'),
+          onClick: (event) => event.stopPropagation(),
+        },
+        h('div', { className: 'sw-modalHead' },
+          h('span', null, `${t('formulaBuilder')} · ${builderTarget === 'sell' ? t('btSellExpr') : t('btExpr')}`),
+          h('button', {
+            type: 'button',
+            className: 'sw-btn sw-btnGhost',
+            style: { marginLeft: 'auto' },
+            onClick: () => setBuilderTarget(null),
+          }, '×')),
+        h('div', { className: 'sw-modalBody' },
+          h('div', { className: 'sw-btBuilderHint' }, t('formulaBuilderHint')),
+          rows.map((row, index) => h('div', { className: 'sw-builderRow', key: index },
+            index > 0
+              ? h('select', {
+                className: 'sw-selectSm',
+                value: row.connect,
+                'aria-label': 'connector',
+                onChange: (event) => updateRow(rows, setRows, index, { connect: event.target.value }),
+              }, h('option', { value: 'and' }, '且'), h('option', { value: 'or' }, '或'))
+              : h('span', { style: { width: 28 } }),
+            h('select', {
+              className: 'sw-selectSm',
+              value: row.field,
+              'aria-label': 'field',
+              onChange: (event) => updateRow(rows, setRows, index, { field: event.target.value }),
+            }, barFields.map((field) => h('option', { key: field.key, value: field.key }, field.label))),
+            h('select', {
+              className: 'sw-selectSm',
+              value: row.op,
+              'aria-label': 'operator',
+              onChange: (event) => updateRow(rows, setRows, index, { op: event.target.value }),
+            }, ops.map((op) => h('option', { key: op.value, value: op.value }, op.label))),
+            h('input', {
+              className: 'sw-inputSm',
+              value: row.value,
+              placeholder: '0',
+              onChange: (event) => updateRow(rows, setRows, index, { value: event.target.value }),
+            }),
+            h('button', {
+              type: 'button',
+              className: 'sw-btn sw-btnGhost',
+              title: t('formulaRemove'),
+              disabled: rows.length <= 1,
+              onClick: () => setRows(rows.filter((_, i) => i !== index)),
+            }, '×'))),
+          h('div', { className: 'sw-builderRow' },
+            h('button', {
+              type: 'button',
+              className: 'sw-btn sw-btnGhost',
+              onClick: () => setRows([...rows, { field: 'close', op: '>', value: '', connect: 'and' }]),
+            }, t('formulaBuilderAdd')),
+            h('button', {
+              type: 'button',
+              className: 'sw-btn sw-btnGhost',
+              onClick: () => setRows([{ field: 'close', op: '>', value: '', connect: 'and' }]),
+            }, t('formulaBuilderClear')),
+            h('span', { className: 'sw-btHint', style: { marginLeft: 'auto' } },
+              buildExpr(rows) || t('btBuilderPreviewEmpty')))),
+        h('div', { className: 'sw-colFoot' },
+          h('button', { type: 'button', className: 'sw-btn sw-btnGhost', onClick: () => setBuilderTarget(null) }, t('cancel')),
+          h('button', {
+            type: 'button',
+            className: 'sw-btn sw-btnPrimary',
+            disabled: !buildExpr(rows),
+            onClick: () => apply(buildExpr(rows)),
+          }, t('formulaBuilderApply')))));
+      };
+
+      const run = () => {
+        setState({ status: 'loading', error: '', result: null });
+        const rule = form.ruleType === 'signal'
+          ? { type: 'signal', id: form.signalId }
+          : { type: 'expr', expr: form.expr };
+        const body = {
+          code: row.code,
+          years: Number(form.years) || 10,
+          capital: Number(form.capital) || 100000,
+          exec: form.exec,
+          buy: rule,
+          sell: sellMode === 'signal'
+            ? { type: 'signal', id: sellSignalId }
+            : sellMode === 'expr'
+              ? { type: 'expr', expr: sellExpr }
+              : { type: 'expr', expr: 'close < 0' }, // 仅止盈止损：不设卖出信号，靠止损/止盈/最长持有/期末平仓
+          stopLossPct: form.stopLoss === '' ? null : Number(form.stopLoss) / 100,
+          takeProfitPct: form.takeProfit === '' ? null : Number(form.takeProfit) / 100,
+          maxHoldDays: form.maxHold === '' ? null : Number(form.maxHold),
+        };
+        fetch(apiUrl('dsh-stock/api/v1/backtest'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify(body),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (!data || !data.ok) throw new Error((data && data.error) || '回测失败');
+            setState({ status: 'done', error: '', result: data.data });
+          })
+          .catch((error) => setState({ status: 'error', error: error.message, result: null }));
+      };
+
+      const metrics = state.result?.metrics;
+      const pctText = (value) => (typeof value === 'number' ? `${(value * 100).toFixed(2)}%` : '—');
+      const num = (value) => (typeof value === 'number' ? String(value) : '—');
+      const equity = state.result?.equity ?? [];
+      let spark = null;
+      if (equity.length > 1) {
+        const values = equity.map((point) => point.value);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const scale = max - min || 1;
+        const points = values.map((value, index) => `${(index / (values.length - 1)) * 100},${40 - ((value - min) / scale) * 38}`).join(' ');
+        spark = h('svg', { className: 'sw-btSpark', viewBox: '0 0 100 42', preserveAspectRatio: 'none' },
+          h('polyline', { points, fill: 'none', stroke: 'var(--dsw-alias-brand-primary,#4f6ef7)', strokeWidth: '0.8' }));
+      }
+
+      return h('div', { className: 'sw-drawerMask', onClick: onClose },
+        h('div', {
+          className: 'sw-drawer sw-btPanel',
+          onClick: (event) => event.stopPropagation(),
+          role: 'dialog',
+          'aria-label': t('backtestTitle'),
+        },
+        h('div', { className: 'sw-modalHead' },
+          h('span', null, `${t('backtestTitle')} · ${row.name} ${row.code}`),
+          h('button', { type: 'button', className: 'sw-btn sw-btnGhost', style: { marginLeft: 'auto' }, onClick: onClose }, '×')),
+        h('div', { className: 'sw-modalBody' },
+          h('div', { className: 'sw-btForm' },
+            h('label', { className: 'sw-btField' }, t('btRuleType'),
+              h('select', { className: 'sw-select', value: form.ruleType, onChange: set('ruleType') },
+                h('option', { value: 'signal' }, t('btSignal')),
+                h('option', { value: 'expr' }, t('btExpr')))),
+            form.ruleType === 'signal'
+              ? h('label', { className: 'sw-btField' }, t('btSignal'),
+                h('select', { className: 'sw-select', value: form.signalId, onChange: set('signalId') },
+                  (presets?.rules?.length ? presets.rules : FALLBACK_RULES).map((rule) => h('option', { key: rule.id, value: rule.id }, rule.label))))
+              : h('div', { className: 'sw-btExprCol' },
+                h('label', { className: 'sw-btField' }, t('btExpr'),
+                  h('input', { className: 'sw-input', value: form.expr, onChange: set('expr'), spellCheck: false })),
+                builderButton('buy')),
+            h('label', { className: 'sw-btField' }, t('btSellMode'),
+              h('select', { className: 'sw-select', value: sellMode, onChange: (event) => setSellMode(event.target.value) },
+                h('option', { value: 'stops' }, t('btSellStops')),
+                h('option', { value: 'signal' }, t('btSignal')),
+                h('option', { value: 'expr' }, t('btExpr')))),
+            sellMode === 'signal'
+              ? h('label', { className: 'sw-btField' }, t('btSellSignal'),
+                h('select', { className: 'sw-select', value: sellSignalId, onChange: (event) => setSellSignalId(event.target.value) },
+                  (presets?.rules?.length ? presets.rules : FALLBACK_RULES).map((rule) => h('option', { key: rule.id, value: rule.id }, rule.label))))
+              : null,
+            sellMode === 'expr'
+              ? h('div', { className: 'sw-btExprCol' },
+                h('label', { className: 'sw-btField' }, t('btSellExpr'),
+                  h('input', { className: 'sw-input', value: sellExpr, onChange: (event) => setSellExpr(event.target.value), spellCheck: false })),
+                builderButton('sell'))
+              : null,
+            h('label', { className: 'sw-btField' }, t('btYears'),
+              h('select', { className: 'sw-select', value: form.years, onChange: set('years') },
+                ['2', '5', '10'].map((value) => h('option', { key: value, value }, `${value} ${t('btYearsUnit')}`)))),
+            h('label', { className: 'sw-btField' }, t('btCapital'),
+              h('input', { className: 'sw-input', value: form.capital, onChange: set('capital'), inputMode: 'numeric' })),
+            h('label', { className: 'sw-btField' }, t('btExec'),
+              h('select', { className: 'sw-select', value: form.exec, onChange: set('exec') },
+                (presets?.execModes ?? [{ id: 'nextOpen', label: '次日开盘' }]).map((mode) => h('option', { key: mode.id, value: mode.id }, mode.label)))),
+            h('label', { className: 'sw-btField' }, t('btStopLoss'),
+              h('input', { className: 'sw-input', value: form.stopLoss, onChange: set('stopLoss'), placeholder: '8', inputMode: 'numeric' })),
+            h('label', { className: 'sw-btField' }, t('btTakeProfit'),
+              h('input', { className: 'sw-input', value: form.takeProfit, onChange: set('takeProfit'), placeholder: '20', inputMode: 'numeric' })),
+            h('label', { className: 'sw-btField' }, t('btMaxHold'),
+              h('input', { className: 'sw-input', value: form.maxHold, onChange: set('maxHold'), placeholder: '30', inputMode: 'numeric' }))),
+          form.ruleType === 'expr'
+            ? h('div', { className: 'sw-btHint' }, t('btExprHint'))
+            : null,
+          sellMode === 'stops'
+            ? h('div', { className: 'sw-btHint' }, t('btSellStopsHint'))
+            : null,
+          h('div', { className: 'sw-btActions' },
+            h('button', { type: 'button', className: 'sw-btn sw-btnPrimary', disabled: state.status === 'loading', onClick: run },
+              state.status === 'loading' ? t('btRunning') : `▶ ${t('btRun')}`),
+            state.error ? h('span', { className: 'sw-btError' }, state.error) : null),
+          state.status === 'done' && metrics
+            ? h(React.Fragment, null,
+              h('div', { className: 'sw-btMetrics' },
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btTotalReturn')), h('b', { className: pctClass(metrics.totalReturn) }, pctText(metrics.totalReturn))),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btAnnualized')), h('b', { className: pctClass(metrics.annualized) }, pctText(metrics.annualized))),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btMaxDD')), h('b', { className: 'sw-loss' }, pctText(metrics.maxDrawdown))),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btSharpe')), h('b', null, num(metrics.sharpe))),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btWinRate')), h('b', null, pctText(metrics.winRate))),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btTrades')), h('b', null, num(metrics.trades))),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btAvgHold')), h('b', null, metrics.avgHoldDays == null ? '—' : `${metrics.avgHoldDays} ${t('btDaysUnit')}`)),
+                h('div', { className: 'sw-btMetric' }, h('span', null, t('btBuyHold')), h('b', { className: pctClass(metrics.buyHoldReturn) }, pctText(metrics.buyHoldReturn)))),
+
+              h('button', {
+                type: 'button',
+                className: 'sw-btn',
+                disabled: !(state.result.trades?.length),
+                onClick: () => setTradesOpen(true),
+                title: state.result.trades?.length ? t('btTradesHint') : t('btNoTrades'),
+              }, `📋 ${t('btTradeList')}（${state.result.trades?.length ?? 0}）`),
+
+              state.result.warnings?.length
+                ? h('div', { className: 'sw-btWarnings' }, state.result.warnings.map((text) => h('div', { key: text }, '⚠ ' + text)))
+                : null,
+
+              spark ? h('div', { className: 'sw-btCurve' }, spark) : null)
+            : null),
+        h('div', { className: 'sw-colFoot' },
+          h('span', { className: 'sw-btFootNote' }, t('btDisclaimer')),
+          h('button', { type: 'button', className: 'sw-btn sw-btnGhost', onClick: onClose }, t('cancel'))),
+
+        tradesOpen
+          ? h('div', {
+            className: 'sw-modalMask sw-modalMaskTop',
+            onClick: (event) => {
+              if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+              setTradesOpen(false);
+            },
+          },
+          h('div', {
+            className: 'sw-modal sw-btTradesModal',
+            role: 'dialog',
+            'aria-label': t('btTradeList'),
+            onClick: (event) => event.stopPropagation(),
+          },
+          h('div', { className: 'sw-modalHead' },
+            h('span', null, `${t('btTradeList')} · ${row.name} ${row.code}（${state.result?.trades?.length ?? 0} ${t('btTradesUnit')}）`),
+            h('button', {
+              type: 'button',
+              className: 'sw-btn sw-btnGhost',
+              style: { marginLeft: 'auto' },
+              onClick: () => setTradesOpen(false),
+            }, '×')),
+          h('div', { className: 'sw-modalBody' },
+            h('div', { className: 'sw-btTrades' },
+              h('table', null,
+                h('thead', null, h('tr', null,
+                  h('th', null, t('btBuyDate')), h('th', null, t('btBuyPrice')), h('th', null, t('btSellDate')),
+                  h('th', null, t('btSellPrice')), h('th', null, t('btQty')), h('th', null, t('btHoldDays')),
+                  h('th', null, t('btPnl')), h('th', null, t('btReason')))),
+                h('tbody', null, (state.result?.trades ?? []).map((trade) => h('tr', { key: `${trade.entryDate}-${trade.exitDate}` },
+                  h('td', null, trade.entryDate), h('td', null, trade.entryPrice), h('td', null, trade.exitDate),
+                  h('td', null, trade.exitPrice), h('td', null, trade.qty), h('td', null, trade.holdDays),
+                  h('td', { className: pctClass(trade.pnlPct) }, `${trade.pnl} (${(trade.pnlPct * 100).toFixed(2)}%)`),
+                  h('td', null, trade.reason))))))),
+          h('div', { className: 'sw-colFoot' },
+            h('span', { className: 'sw-btFootNote' }, t('btTradesCostNote')),
+            h('button', { type: 'button', className: 'sw-btn sw-btnGhost', onClick: () => setTradesOpen(false) }, t('cancel')))))
+          : null,
+        renderBuilderModal()));
+    }
+
     function DetailPage({ row, t, onBack, watched, onToggleWatch = () => {}, sourceLabel = '' }) {
       const [detailOpen, setDetailOpen] = React.useState(false);
+      const [backtestOpen, setBacktestOpen] = React.useState(false);
       const [valuation, setValuation] = React.useState({ status: 'idle', data: null, error: '' });
       // 请求序号：effect 不能再依赖自身 status（否则 setValuation('loading') 触发重跑，
       // cleanup 会作废本轮请求，结果被丢弃 → 永远停在"计算中"）
@@ -5121,10 +5613,22 @@ window.__ModuleLoader__.load({
             h('span', { className: 'sw-detailPct ' + pctClass(pct) }, fmtPct(pct))),
           h('button', {
             type: 'button',
-            className: 'sw-btn sw-btnGhost',
+            className: 'sw-btn',
             style: { marginLeft: 'auto' },
+            title: t('btHint'),
+            onClick: () => {
+              setDetailOpen(false);
+              setBacktestOpen(true);
+            },
+          }, `📈 ${t('backtest')}`),
+          h('button', {
+            type: 'button',
+            className: 'sw-btn sw-btnGhost',
             title: t('detailHint'),
-            onClick: () => setDetailOpen(true),
+            onClick: () => {
+              setBacktestOpen(false);
+              setDetailOpen(true);
+            },
           }, `ⓘ ${t('detailBtn')}`)),
 
         h('div', { className: 'sw-periods' },
@@ -5180,6 +5684,10 @@ window.__ModuleLoader__.load({
         h('footer', { className: 'sw-foot' },
           h('span', null, t('payloadHint').replace('{source}', sourceLabel || t('dataSourceUnknown'))),
           h('span', { style: { marginLeft: 'auto' } }, t('escHint'))),
+        backtestOpen
+          ? h(BacktestPanel, { t, row, onClose: () => setBacktestOpen(false) })
+          : null,
+
         detailOpen
           ? h(StockDetailPopover, {
             t,
@@ -5409,6 +5917,7 @@ window.__ModuleLoader__.load({
         BoardPanel,
         BOARD_COLUMNS,
         StockDetailPopover,
+        BacktestPanel,
         WatchlistBar,
         WatchlistImportDialog,
         normalizeStockTokens,

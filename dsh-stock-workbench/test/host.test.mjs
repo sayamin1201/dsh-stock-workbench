@@ -34,6 +34,8 @@ apply(ctx, { ttlMs: 0 });
 
 assert.equal(name, 'dsh-stock-workbench');
 assert.deepEqual([...routes.keys()].sort(), [
+  '/dsh-stock/api/v1/backtest',
+  '/dsh-stock/api/v1/backtest/presets',
   '/dsh-stock/api/v1/board-members',
   '/dsh-stock/api/v1/boards',
   '/dsh-stock/api/v1/dashboard',
@@ -488,6 +490,50 @@ assert.equal(bulk.json.ok, true);
 assert.equal(bulk.json.data.status, 'disabled');
 console.log('  ✓ 批量估值分位：测试环境返回 disabled（避免真实构建）');
 delete process.env.DSH_STOCK_BULK_VALUATION;
+
+// 回测：预置规则 + 单股回测
+const btPresets = await call('/dsh-stock/api/v1/backtest/presets');
+assert.equal(btPresets.status, 200);
+assert.equal(btPresets.json.ok, true);
+assert.ok(btPresets.json.data.rules.length >= 6, '预置规则不足：' + btPresets.json.data.rules.length);
+assert.ok(btPresets.json.data.barFields.length >= 20, 'bar 字段不足：' + btPresets.json.data.barFields.length);
+assert.ok(btPresets.json.data.execModes.some((mode) => mode.id === 'nextOpen'), '缺次日开盘执行模式');
+console.log('  ✓ 回测预置：' + btPresets.json.data.rules.map((rule) => rule.id).join(',') + '；表达式字段 ' + btPresets.json.data.barFields.length + ' 个');
+
+const bt = await call('/dsh-stock/api/v1/backtest', {
+  method: 'POST',
+  body: {
+    code: '600036',
+    years: 2,
+    buy: { type: 'signal', id: 'macd_golden' },
+    sell: { type: 'signal', id: 'macd_golden' },
+    exec: 'nextOpen',
+  },
+});
+assert.equal(bt.status, 200, bt.body?.slice(0, 200));
+assert.equal(bt.json.ok, true);
+const btData = bt.json.data;
+assert.ok(btData.meta.bars >= 400, '回测 bar 数异常：' + btData.meta.bars);
+assert.ok(btData.meta.valuationRows > 100, '估值序列为空：' + btData.meta.valuationRows);
+for (const key of ['totalReturn', 'annualized', 'maxDrawdown', 'sharpe', 'winRate', 'trades', 'buyHoldReturn']) {
+  assert.ok(key in btData.metrics, '缺指标 ' + key);
+}
+for (const trade of btData.trades) {
+  assert.ok(trade.entryDate < trade.exitDate, '买卖日期顺序异常');
+  assert.ok(trade.holdDays >= 1, '违反 T+1：' + trade.holdDays);
+  assert.ok(trade.entryPrice > 0 && trade.exitPrice > 0, '价格异常');
+}
+assert.equal(btData.meta.exec, 'nextOpen');
+assert.ok(Array.isArray(btData.equity) && btData.equity.length > 100, '权益曲线异常');
+console.log('  ✓ 回测：' + btData.meta.bars + ' 根 K 线 / ' + btData.trades.length + ' 笔交易 / 收益 ' + (btData.metrics.totalReturn * 100).toFixed(2) + '%');
+
+const btBad = await call('/dsh-stock/api/v1/backtest', {
+  method: 'POST',
+  body: { code: '600036', years: 2, buy: { type: 'expr', expr: 'close >' } },
+});
+assert.equal(btBad.status, 400, '非法表达式应 400');
+assert.ok(String(btBad.json.error).includes('表达式'), '错误信息：' + btBad.json.error);
+console.log('  ✓ 回测非法表达式返回 400');
 
 // 重载：清空缓存后重新请求
 const reloadRes = await call('/dsh-stock/api/v1/reload', { method: 'POST' });
