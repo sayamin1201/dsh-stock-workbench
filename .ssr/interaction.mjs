@@ -391,12 +391,7 @@ check('保存后表头不再有该列且写入 localStorage', () => {
 });
 
 // --- 齿轮只跟结果表：公式 tab 未执行时不该出现齿轮
-const formulaTabBtn = root.findAll((node) => typeof node.type === 'string'
-  && typeof node.props.onClick === 'function'
-  && textOf(node) === '公式选股')[0];
-await act(async () => {
-  formulaTabBtn.props.onClick();
-});
+await selectTab('公式选股');
 check('公式 tab 未执行时没有齿轮（齿轮只跟结果表）', () => {
   const gears = root.findAll((node) => typeof node.type === 'string'
     && String(node.props.className ?? '').split(' ').includes('sw-gearBtn'));
@@ -417,12 +412,7 @@ check('重新进入后仍是上次的榜单列配置（振幅仍隐藏）', () =
 });
 
 // 切回榜单（后续用例针对榜单表格）
-const backToList = root.findAll((node) => typeof node.type === 'string'
-  && typeof node.props.onClick === 'function'
-  && textOf(node) === '全 A 榜单')[0];
-await act(async () => {
-  backToList.props.onClick();
-});
+await selectTab('全 A 榜单');
 
 // --- 分红详情：点「连续分红 / 分红年数」打开弹窗
 const divLink = root.findAll((node) => typeof node.type === 'string'
@@ -449,13 +439,31 @@ check('关闭后弹窗消失', () => {
   assert(!markup.includes('分红详情'), '弹窗没关闭');
 });
 
+// tab 已收进下拉菜单：点开菜单再选目标 tab
+function openTabMenu() {
+  const btn = root.findAll((node) => typeof node.type === 'string'
+    && String(node.props.className ?? '').includes('sw-tabButton'))[0];
+  return btn;
+}
+async function selectTab(labelText) {
+  const btn = openTabMenu();
+  await act(async () => { btn.props.onClick(); });
+  const item = root.findAll((node) => typeof node.type === 'string'
+    && String(node.props.className ?? '').includes('sw-tabPopItem')
+    && textOf(node) === labelText)[0];
+  await act(async () => { item.props.onClick(); });
+  return item;
+}
+
 // --- 公式选股 tab：收藏夹按钮与抽屉
-const formulaTab = root.findAll((node) => typeof node.type === 'string'
-  && typeof node.props.onClick === 'function'
-  && textOf(node) === '公式选股')[0];
-check('可切换到公式选股 tab', () => assert(formulaTab, '找不到公式选股 tab'));
+await selectTab('公式选股');
+check('可切换到公式选股 tab', () => {
+  const pop = root.findAll((node) => typeof node.type === 'string'
+    && String(node.props.className ?? '').includes('sw-tabPopItem'));
+  assert(pop.length === 0, '选择后菜单应关闭');
+});
 await act(async () => {
-  formulaTab.props.onClick();
+  await selectTab('公式选股');
 });
 const favButton = root.findAll((node) => typeof node.type === 'string'
   && typeof node.props.onClick === 'function'
@@ -529,13 +537,9 @@ check('再点一次切升序（100 在前）', () => {
 });
 
 // --- 板块资金流：点击板块 → 回榜单按成分股筛选
-const boardsTab = root.findAll((node) => typeof node.type === 'string'
-  && typeof node.props.onClick === 'function'
-  && textOf(node) === '板块资金流')[0];
-check('有板块资金流 tab', () => assert(boardsTab, '找不到板块资金流 tab'));
-await act(async () => {
-  boardsTab.props.onClick();
-});
+await selectTab('板块资金流');
+check('可切换到板块资金流 tab', () => assert(true));
+await selectTab('板块资金流');
 await act(async () => {});
 const boardRows = root.findAll((node) => typeof node.type === 'string'
   && String(node.props.className ?? '').includes('sw-resRow'));

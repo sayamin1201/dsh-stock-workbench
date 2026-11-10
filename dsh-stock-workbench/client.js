@@ -868,7 +868,8 @@ window.__ModuleLoader__.load({
       universe: '全A',
       matched: '命中',
       refreshHint: '手动刷新：点一次拉一次全市场快照',
-      payloadHint: '数据来源：东方财富公开行情接口，仅供研究参考',
+      payloadHint: '数据来源：{source}公开行情接口，仅供研究参考',
+      dataSourceUnknown: '行情',
       filters: '筛选',
       reset: '重置',
       presets: '快捷选股',
@@ -1155,7 +1156,8 @@ window.__ModuleLoader__.load({
       universe: 'Universe',
       matched: 'Matched',
       refreshHint: 'Manual refresh: one click, one full-market snapshot',
-      payloadHint: 'Source: Eastmoney public quote API — research use only',
+      payloadHint: 'Source: {source} public quote API — research use only',
+      dataSourceUnknown: 'quote',
       filters: 'Filters',
       reset: 'Reset',
       presets: 'Quick screens',
@@ -1416,6 +1418,16 @@ window.__ModuleLoader__.load({
 .sw-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:var(--dsw-alias-label-secondary,#6b7280);font-size:12px}
 .sw-meta b{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600;font-variant-numeric:tabular-nums}
 .sw-metaWarn{color:var(--dsw-alias-label-warning,#b45309);margin-left:4px}
+.sw-tabMenu{position:relative;display:inline-flex}
+.sw-tabMask{position:fixed;inset:0;z-index:14;background:transparent}
+.sw-tabButton::after{content:'▾';margin-left:6px;font-size:10px;opacity:.7}
+.sw-tabPop{position:absolute;top:calc(100% + 6px);left:0;z-index:15;min-width:160px;padding:6px;
+  border-radius:10px;border:.5px solid var(--dsw-alias-border-l2,#e5e7eb);
+  background:var(--dsw-alias-bg-layer-1,#fff);box-shadow:0 12px 28px rgba(0,0,0,.16)}
+.sw-tabPopItem{display:block;width:100%;text-align:left;font:inherit;font-size:13px;cursor:pointer;
+  border:none;background:transparent;padding:8px 10px;border-radius:7px;color:var(--dsw-alias-label-primary,#1f2328)}
+.sw-tabPopItem:hover{background:var(--dsw-alias-bg-layer-2,#f5f7fa)}
+.sw-tabPopOn{color:var(--dsw-alias-brand-primary,#4f6ef7);font-weight:600;background:var(--dsw-alias-bg-layer-2,#f5f7fa)}
 .sw-footSource{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto;color:var(--dsw-alias-label-secondary,#6b7280)}
 .sw-footMeta{display:inline-flex;align-items:center;gap:12px}
 .sw-footMeta b{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600;font-variant-numeric:tabular-nums}
@@ -2366,6 +2378,14 @@ window.__ModuleLoader__.load({
       const rows = data?.rows ?? [];
       const [dataSources, setDataSources] = React.useState({ preferred: '', providers: [], missingFields: [] });
       const [reloadState, setReloadState] = React.useState({ status: 'idle', note: '' });
+      const [tabMenuOpen, setTabMenuOpen] = React.useState(false);
+      const TAB_ITEMS = [
+        ['list', 'tabList'],
+        ['scan', 'tabScan'],
+        ['flow', 'tabFlow'],
+        ['boards', 'tabBoards'],
+        ['formula', 'tabFormula'],
+      ];
       const meta = data?.meta ?? {};
       // 选择器跟随「实际使用源」：自动回退时显示真正在用的源（首选源另行标注）
       const preferredSource = dataSources.preferred;
@@ -2603,32 +2623,28 @@ window.__ModuleLoader__.load({
 
         h('header', { className: 'sw-head' },
           h('h1', { className: 'sw-title' }, t('title')),
-          h('div', { className: 'sw-tabs' },
+          h('div', { className: 'sw-tabMenu' },
+            tabMenuOpen ? h('div', { className: 'sw-tabMask', onClick: () => setTabMenuOpen(false) }) : null,
             h('button', {
               type: 'button',
-              className: 'sw-tab' + (tab === 'list' ? ' sw-tabOn' : ''),
-              onClick: () => setTab('list'),
-            }, t('tabList')),
-            h('button', {
-              type: 'button',
-              className: 'sw-tab' + (tab === 'scan' ? ' sw-tabOn' : ''),
-              onClick: () => setTab('scan'),
-            }, t('tabScan')),
-            h('button', {
-              type: 'button',
-              className: 'sw-tab' + (tab === 'flow' ? ' sw-tabOn' : ''),
-              onClick: () => setTab('flow'),
-            }, t('tabFlow')),
-            h('button', {
-              type: 'button',
-              className: 'sw-tab' + (tab === 'boards' ? ' sw-tabOn' : ''),
-              onClick: () => setTab('boards'),
-            }, t('tabBoards')),
-            h('button', {
-              type: 'button',
-              className: 'sw-tab' + (tab === 'formula' ? ' sw-tabOn' : ''),
-              onClick: () => setTab('formula'),
-            }, t('tabFormula'))),
+              className: 'sw-tab sw-tabButton' + (tabMenuOpen ? ' sw-tabOn' : ''),
+              'aria-haspopup': 'true',
+              'aria-expanded': tabMenuOpen ? 'true' : 'false',
+              onClick: () => setTabMenuOpen((open) => !open),
+            }, t((TAB_ITEMS.find(([id]) => id === tab) ?? TAB_ITEMS[0])[1])),
+            tabMenuOpen
+              ? h('div', { className: 'sw-tabPop', role: 'menu' },
+                TAB_ITEMS.map(([id, labelKey]) => h('button', {
+                  key: id,
+                  type: 'button',
+                  role: 'menuitem',
+                  className: 'sw-tabPopItem' + (tab === id ? ' sw-tabPopOn' : ''),
+                  onClick: () => {
+                    setTab(id);
+                    setTabMenuOpen(false);
+                  },
+                }, t(labelKey))))
+              : null),
           h('div', { className: 'sw-headActions' },
             (sourceOptions ?? []).length
               ? h('label', { className: 'sw-field' },
@@ -2792,8 +2808,8 @@ window.__ModuleLoader__.load({
                 title: `${t('providerMissing')}${data.meta.providerMissingFields.map((key) => providerFieldLabel(t, key)).join(' / ')}`,
               }, `· ${t('providerMissing')}${data.meta.providerMissingFields.slice(0, 4).map((key) => providerFieldLabel(t, key)).join(' / ')}${data.meta.providerMissingFields.length > 4 ? ' …' : ''}`)
               : null,
-            h('span', { style: { opacity: 0.8 } }, t('payloadHint'),
-              data ? ` · ${t('snapshotAt')} ${snapshotTime}` : ''))));
+            h('span', { style: { opacity: 0.8 } },
+              t('payloadHint').replace('{source}', meta.providerLabel ?? t('dataSourceUnknown'))))));
 
       return h('div', { className: 'sw-host' },
         h('div', { className: selected ? 'sw-layer sw-layerHidden' : 'sw-layer' }, workbench),
@@ -2805,6 +2821,7 @@ window.__ModuleLoader__.load({
               onBack: () => setSelected(null),
               watched: watch.has(selected.code),
               onToggleWatch: () => watch.toggle(selected.code),
+              sourceLabel: meta.providerLabel ?? '',
             }))
           : null,
         configTab
@@ -4885,11 +4902,13 @@ window.__ModuleLoader__.load({
             kv(t('col.pct'), fmtPct(row.pct), pctClass(row.pct)),
             kv(t('col.amplitude'), fmtPctPlain(row.amplitude)),
             kv(t('col.amount'), fmtMoney(row.amount)),
+            kv(t('stat.volume'), fmtLots(row.volLots)),
             kv(t('col.turnover'), fmtPctPlain(row.turnover)),
             kv(t('col.volumeRatio'), fmtNum(row.volumeRatio)),
             kv(t('col.speed'), fmtPct(row.speed), pctClass(row.speed)),
             kv(t('col.pct5d'), fmtPct(row.pct5d), pctClass(row.pct5d)),
             kv(t('col.floatMcap'), fmtMcap(row.floatMcap)),
+            kv(t('stat.pe'), fmtNum(row.pe)),
             kv(t('col.mainIn'), fmtMoneySign(row.mainIn), pctClass(row.mainIn)),
             kv(t('flowPctCol'), isNum(row.mainInPct) ? `${row.mainInPct.toFixed(2)}%` : '—'))),
           group(t('detailValuation'), valuationNodes),
@@ -4913,7 +4932,7 @@ window.__ModuleLoader__.load({
             kv(t('col.concepts'), row.concepts || '—'))))));
     }
 
-    function DetailPage({ row, t, onBack, watched, onToggleWatch = () => {} }) {
+    function DetailPage({ row, t, onBack, watched, onToggleWatch = () => {}, sourceLabel = '' }) {
       const [detailOpen, setDetailOpen] = React.useState(false);
       const [valuation, setValuation] = React.useState({ status: 'idle', data: null, error: '' });
       // 请求序号：effect 不能再依赖自身 status（否则 setValuation('loading') 触发重跑，
@@ -5100,22 +5119,13 @@ window.__ModuleLoader__.load({
           h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 10 } },
             h('span', { className: 'sw-detailPrice ' + pctClass(pct) }, fmtPrice(row.price)),
             h('span', { className: 'sw-detailPct ' + pctClass(pct) }, fmtPct(pct))),
-          h('div', { className: 'sw-stats' },
-            h('span', { className: 'sw-stat' }, t('col.amount'), h('b', null, fmtMoney(row.amount))),
-            h('span', { className: 'sw-stat' }, t('stat.volume'), h('b', null, fmtLots(row.volLots))),
-            h('span', { className: 'sw-stat' }, t('col.turnover'), h('b', null, fmtPctPlain(row.turnover))),
-            h('span', { className: 'sw-stat' }, t('col.volumeRatio'), h('b', null, fmtNum(row.volumeRatio))),
-            h('span', { className: 'sw-stat' }, t('col.amplitude'), h('b', null, fmtPctPlain(row.amplitude))),
-            h('span', { className: 'sw-stat' }, t('col.floatMcap'), h('b', null, fmtMcap(row.floatMcap))),
-            h('span', { className: 'sw-stat' }, t('col.mainIn'), h('b', { className: pctClass(row.mainIn) }, fmtMoneySign(row.mainIn))),
-            h('span', { className: 'sw-stat' }, t('stat.pe'), h('b', null, fmtNum(row.pe))),
-            h('button', {
-              type: 'button',
-              className: 'sw-btn sw-btnGhost',
-              style: { marginLeft: 'auto' },
-              title: t('detailHint'),
-              onClick: () => setDetailOpen(true),
-            }, `ⓘ ${t('detailBtn')}`))),
+          h('button', {
+            type: 'button',
+            className: 'sw-btn sw-btnGhost',
+            style: { marginLeft: 'auto' },
+            title: t('detailHint'),
+            onClick: () => setDetailOpen(true),
+          }, `ⓘ ${t('detailBtn')}`)),
 
         h('div', { className: 'sw-periods' },
           PERIODS.map((item) => h('button', {
@@ -5168,7 +5178,7 @@ window.__ModuleLoader__.load({
           : null,
 
         h('footer', { className: 'sw-foot' },
-          h('span', null, t('payloadHint')),
+          h('span', null, t('payloadHint').replace('{source}', sourceLabel || t('dataSourceUnknown'))),
           h('span', { style: { marginLeft: 'auto' } }, t('escHint'))),
         detailOpen
           ? h(StockDetailPopover, {
